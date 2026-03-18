@@ -1,0 +1,12 @@
+{
+  "name": "proxy-app-launcher",
+  "description": "Create a macOS .app launcher that starts any Electron/desktop app with proxy environment variables injected, so the app works with Clash/V2Ray in rule mode without TUN.",
+  "version": "1.0.0",
+  "author": {
+    "name": "raygooo",
+    "email": "lovzoe@hotmail.com"
+  },
+  "repository": "https://github.com/Raygooo/ray_skills",
+  "license": "MIT",
+  "keywords": ["macos", "proxy", "electron", "clash", "v2ray"]
+}
