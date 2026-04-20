@@ -1,0 +1,12 @@
+{
+  "name": "marketplace-contributor",
+  "description": "Meta-plugin for contributing to this marketplace: author new skills, scaffold new plugins, and register them locally.",
+  "version": "0.1.0",
+  "author": {
+    "name": "raygooo",
+    "email": "lovzoe@hotmail.com"
+  },
+  "repository": "https://github.com/Raygooo/ray_skills",
+  "license": "MIT",
+  "keywords": ["meta", "skill-authoring", "plugin-authoring", "marketplace"]
+}

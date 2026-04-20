@@ -30,3 +30,17 @@ Creates a macOS `.app` launcher that starts any Electron/desktop app (Claude, Cu
 - "app ignores system proxy"
 - "Clash rule mode not working for app"
 - "create proxy launcher"
+
+### marketplace-contributor
+
+Meta-plugin for growing this marketplace itself. Teaches agents how to capture a workflow as a reusable skill, scaffold a new plugin around it, apply progressive disclosure across `SKILL.md` / `references/` / `scripts/` / `assets/`, and register the plugin locally.
+
+**Skills included:**
+- `marketplace-contributor:contribute-skill` — auto-triggered when you want to save a workflow as a skill or add a new plugin to this marketplace
+
+**Trigger phrases:**
+- "save this as a skill"
+- "turn this workflow into a skill"
+- "add a skill to the marketplace"
+- "create a new plugin for this"
+- "contribute to my marketplace"
