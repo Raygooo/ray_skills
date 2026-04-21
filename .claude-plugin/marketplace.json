@@ -8,6 +8,11 @@
       "name": "proxy-app-launcher",
       "source": "./plugins/proxy-app-launcher",
       "description": "Create a macOS .app launcher that starts any Electron/desktop app with proxy environment variables injected"
+    },
+    {
+      "name": "marketplace-contributor",
+      "source": "./plugins/marketplace-contributor",
+      "description": "Meta-plugin for contributing to this marketplace: author new skills, scaffold new plugins, and register them locally"
     }
   ]
 }
