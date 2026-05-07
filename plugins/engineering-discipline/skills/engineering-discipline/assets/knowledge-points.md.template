@@ -1,0 +1,21 @@
+# Knowledge Points
+
+Transferable concepts learned through real project work. See [`README.md`](./README.md) for format and when to add new entries.
+
+Newest on top.
+
+---
+
+<!--
+Template for a new entry (newest go on top of the file, above any existing entries):
+
+## KP-NNN: <Title> (<date>)
+
+**Concept.** One-sentence definition.
+
+**What we did.** Concrete reference to project work — file paths, ADR numbers, commit timing. Specific enough that a future reader can see the actual artifact, not just a vague gesture.
+
+**Why it matters.** The general principle, divorced from this specific project. Where this concept comes up in other work — different stacks, different domains, different jobs.
+
+**See also.** Links to ADRs, backlog entries, code paths.
+-->

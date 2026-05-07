@@ -1,0 +1,173 @@
+# Agent prompts and the autonomous evolution loop
+
+This folder holds the prompts that drive Claude agents working on this project, plus the report directory for the autonomous loop. Two invocation modes share a common implementation core:
+
+- **Autonomous mode** — fired on a schedule (cron, [`/loop`](https://docs.claude.com/en/docs/claude-code/slash-commands), or [`/schedule`](https://docs.claude.com/en/docs/claude-code/slash-commands)). Reads the roadmap, picks one queued improvement, implements it, commits to a worktree branch, and writes a one-screen report for the human.
+- **Parent-driven mode** — fired by a parent Claude session via the Agent tool. The parent picks the IMP and hands the id to the sub-agent; the sub-agent does the implementation discipline and returns a structured report in chat for the parent to act on (typically a `--no-ff` merge).
+
+Both modes share the same hard constraints: **never** commit to `{{DEFAULT_BRANCH}}`, **never** push, **never** run if preconditions don't hold, never start a second IMP per invocation. Every run is independent and lives in its own git worktree.
+
+## File layout
+
+| File | Role |
+|---|---|
+| [`core.md`](./core.md) | **Shared implementation steps.** Read context → walk rubric (planning) → flip IMP status → implement → walk rubric (verification) + run `{{TYPE_CHECK_CMD}}` / `{{LINT_CMD}}` / `{{BUILD_CMD}}` → document (CHANGELOG, ADR, KP, IMP→done) → commit. Both wrappers below delegate to this file for the actual work. |
+| [`prompt.md`](./prompt.md) | **Autonomous wrapper.** Adds: pre-flight initialization gate, IMP picking from the queue (with priority rules and "no eligible IMP, propose one" fallback), two-mode worktree setup (Mode A: from `{{DEFAULT_BRANCH}}`; Mode B: harness-managed), in-flight status file in `reports/`, on-disk final report. |
+| [`sub-agent-prompt.md`](./sub-agent-prompt.md) | **Parent-driven wrapper.** Adds: parameter section the parent fills (IMP id), pre-flight that *verifies* the parent's setup rather than creating it, structured prose report back to the parent in chat (no on-disk file). |
+| [`reports/`](./reports/) | Per-run reports from the **autonomous** loop only. While a run is in flight the file is `<TS>.in-progress.md`; at the end the agent renames it to `<TS>.md`. The filename suffix is the terminal-state signal — `.in-progress.md` = running (or wedged); `.md` = over. Parent-driven runs **do not write here** — their output is the chat reply to the parent. |
+
+The wrapper-core split is captured in [ADR-{{ADR_NUMBER_CORE}}](../decisions/{{ADR_NUMBER_CORE}}-shared-core-for-agent-prompts.md).
+
+## How it works (autonomous mode)
+
+```
+cron (or /loop) ──▶  fires the agent
+                          │
+                          ▼
+                  reads prompt.md
+                          │
+                          ▼
+            pre-flight: check init gate (G1..G7)
+                          │
+                ┌─────────┴──────────┐
+                │                    │
+              FAIL                 PASS
+                │                    │
+                ▼                    ▼
+          write FB-NNN          set up worktree (dual-mode):
+          and STOP                Mode A — current branch is {{DEFAULT_BRANCH}}:
+                                    create `../<repo>_autorun_<UTC>`
+                                    on branch `autorun/<UTC>`
+                                  Mode B — already on non-default branch
+                                    (harness-managed worktree):
+                                    use the current worktree
+                                     │
+                                     ▼
+                          open reports/<UTC>.in-progress.md
+                          (live status file; appended at each step)
+                                     │
+                                     ▼
+                          pick ONE IMP-NNN by priority
+                          (recorded in status file's Picked: header)
+                                     │
+                                     ▼
+                          read core.md — follow Steps A–F
+                          (with status-file appends at each named boundary)
+                                     │
+                                     ▼
+                          append final report body, then
+                          rename in-progress.md → reports/<UTC>.md
+                                     │
+                                     ▼
+                          STOP. Worktree left for human review.
+```
+
+## Invocation options
+
+### Autonomous mode — three ways to fire it
+
+#### Option 1 — `claude` CLI in cron (most direct)
+
+If you have the Claude Code CLI installed:
+
+```cron
+# Daily at 09:00 local time
+0 9 * * * cd {{PROJECT_ROOT}} && claude -p "$(cat docs/autorun/prompt.md)" --dangerously-skip-permissions >> ~/{{PROJECT_NAME}}_autorun.log 2>&1
+```
+
+Or use the wrapper script: `scripts/autorun.sh`.
+
+Notes:
+- `cd` first so relative paths in the prompt resolve correctly.
+- `--dangerously-skip-permissions` is required for non-interactive runs since the agent needs to edit files and run shell commands without an approval prompt. The autorun prompt enforces its own safety boundaries (no default-branch commits, no pushes, sandboxed worktree).
+
+#### Option 2 — Claude Code `/loop`
+
+```
+/loop 24h docs/autorun/prompt.md
+```
+
+Stop with `/loop stop`.
+
+#### Option 3 — Anthropic-hosted scheduled remote agents (`/schedule`)
+
+```
+/schedule
+```
+
+Then provide the prompt content.
+
+### Parent-driven mode — Agent tool from inside a Claude session
+
+When a parent Claude session is working on this project and wants to delegate one IMP to a sub-agent (e.g. to parallelize two independent IMPs in worktrees), it invokes the `Agent` tool with `isolation: "worktree"` and a prompt that points at [`sub-agent-prompt.md`](./sub-agent-prompt.md):
+
+```
+Agent({
+  description: "Implement IMP-NNN",
+  isolation: "worktree",
+  prompt: `You are implementing one IMP for the {{PROJECT_NAME}} project.
+Read {{PROJECT_ROOT}}/docs/autorun/sub-agent-prompt.md in full and follow it.
+
+Your parameters:
+- IMP to implement: IMP-NNN
+
+Begin.`
+})
+```
+
+The sub-agent runs in an isolated git worktree, follows [`core.md`](./core.md) for the implementation steps, commits on its worktree branch, and returns a structured prose report. The parent then merges with `--no-ff` (or discards). No file is written to `reports/` — the chat report is the handoff surface.
+
+For parallel IMPs, the parent fires multiple `Agent` calls in a single message; they run concurrently in separate worktrees. The parent serially merges, resolving any conflicts (typically in `CHANGELOG.md` and `docs/backlog/improvements.md`).
+
+## Reviewing what the agent did (autonomous mode)
+
+After each run:
+
+1. Open the latest report: `ls -t docs/autorun/reports/ | head -1`. Read it.
+2. The report includes the worktree's absolute path.
+3. Diff against `{{DEFAULT_BRANCH}}`:
+   ```bash
+   cd ../<repo>_autorun_<timestamp>
+   git diff {{DEFAULT_BRANCH}}..HEAD
+   ```
+4. If you like the work: merge it into `{{DEFAULT_BRANCH}}` (`git merge <branch> --no-ff` from the project root, NOT the worktree).
+5. If you don't like it: delete the worktree (`git worktree remove ../<repo>_autorun_<timestamp> --force`).
+
+### Mid-run observability
+
+While a run is in progress, you can `ls docs/autorun/reports/` at any time to see what's happening:
+
+- A `<TS>.in-progress.md` file means a run is currently going. Open it to see the timestamped step log.
+- A `<TS>.md` file means the run finished (success, blocker, or proposal-only — the report's `Status:` line says which).
+- A `<TS>.in-progress.md` file from a timestamp older than ~10 minutes is a **wedged run**: the agent hung before reaching the rename step. Investigate the worktree directly. The agent does not auto-rename on wedge so this signal is unambiguous.
+
+## What the agent will NOT do
+
+These are hard constraints encoded in `prompt.md` / `sub-agent-prompt.md` / `core.md`:
+
+- Commit directly to `{{DEFAULT_BRANCH}}`
+- Push to a remote (regardless of whether one is configured)
+- Modify `ROADMAP.md` strategic decisions D1–DN
+- Touch files outside the chosen IMP's scope
+- Skip the rubric walk
+- Continue if `{{TYPE_CHECK_CMD}}` / `{{LINT_CMD}}` / `{{BUILD_CMD}}` fails
+- Run if the initialization gate isn't satisfied (autonomous mode)
+- Implement an item that's tagged for a future phase
+
+## When the agent has nothing to do (autonomous mode)
+
+If no `accepted` or `scheduled-phase-N` improvements exist for the current phase, the agent will:
+
+1. Generate **one** new `IMP-NNN` proposal based on recent CHANGELOG gaps, open feedback, or current-phase deliverables that haven't been started.
+2. Append it to `docs/backlog/improvements.md` with status `proposed`.
+3. Stop without implementing it. Implementation only happens after the human reviews and bumps status to `accepted`.
+
+This keeps the queue alive without letting the agent drift off-roadmap.
+
+## See also
+
+- [ADR-{{ADR_NUMBER_GATE}} — Initialization gate](../decisions/{{ADR_NUMBER_GATE}}-initialization-gate.md) — preconditions enforced by the autorun pre-flight check
+- [ADR-{{ADR_NUMBER_LOOP}} — Autonomous evolution loop](../decisions/{{ADR_NUMBER_LOOP}}-autonomous-evolution-loop.md) — the design rationale
+- [ADR-{{ADR_NUMBER_CORE}} — Shared core for agent prompts](../decisions/{{ADR_NUMBER_CORE}}-shared-core-for-agent-prompts.md) — why `core.md` exists
+- [`docs/rubric.md`](../rubric.md) — the rubric the agent walks twice per run
+- [`engineering-discipline` skill](https://github.com/Raygooo/ray_skills) — the underlying source-of-truth system this layer builds on

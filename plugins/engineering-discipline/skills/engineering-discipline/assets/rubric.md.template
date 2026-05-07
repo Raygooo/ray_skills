@@ -1,0 +1,122 @@
+# Feature Rubric
+
+A checklist for designing and reviewing every meaningful feature in this project.
+
+## How to use it
+
+Run through this rubric **twice** for any non-trivial change:
+
+1. **Before implementing** (planning) — Walk every item. For each, decide: handle now / defer with a backlog entry / explicit `wontfix` with reason. Anything not addressed is a known gap, not a surprise.
+2. **After implementing** (verification) — Walk every item again, against the actual code and behavior. The check isn't "did I think about it" but "is it true now."
+
+Items are numbered (R1.1, R1.2, …) so they can be cited in commits, ADRs, PR descriptions, and CHANGELOG entries. *"Addresses R3.4, R5.1; defers R7.2 → IMP-007"* is a complete and unambiguous description.
+
+This rubric starts as a generic baseline. Edit it to fit your project — drop items that don't apply (e.g. R3 if there's no resource budget to manage), add items in domains your project specifically deals with (e.g. ML training reproducibility, real-time latency budgets, regulatory compliance). **Keep the numbering scheme stable** even when you edit content — cross-references rely on it.
+
+---
+
+## R1. Behavior contract
+
+- **R1.1** What is the happy-path input → output? Write it as one sentence before any code.
+- **R1.2** What public state changes after this runs (URL, server data, displayed UI)?
+- **R1.3** What is the contract on success? (Required fields, ordering, format.)
+- **R1.4** What is the contract on failure? (Error event shape, status codes, fallback UI state.)
+- **R1.5** What invariants hold across all runs, regardless of input?
+- **R1.6** What is explicitly out of scope?
+
+## R2. Failure modes
+
+- **R2.1** What happens if required configuration is missing or wrong (env vars, API keys, feature flags)? Is the error visible to the user, not just the log?
+- **R2.2** What happens if an upstream dependency returns an error (4xx, 5xx, rate limit, timeout)?
+- **R2.3** What happens if the network drops mid-operation? Does the client get a terminal signal, or does it just hang?
+- **R2.4** What happens if the operation produces an empty result? A truncated result? A malformed result?
+- **R2.5** What happens if the user navigates away mid-operation and comes back?
+- **R2.6** What happens if the user fires the same operation twice rapidly?
+- **R2.7** Are errors **surfaced to the user**, not just logged on the server?
+- **R2.8** Are recoverable failures **auto-recovered** where reasonable (retry, continue, etc.)?
+
+## R3. Resource economics
+
+<!-- Tailor this section to your project's actual resource constraints.
+     Examples: API token budgets, database connection limits, memory caps,
+     CPU time budgets, network bandwidth, storage quotas, monetary cost. -->
+
+- **R3.1** What is the maximum cost per invocation (tokens, dollars, CPU-seconds, memory)? Is there a cap, or is it open-ended?
+- **R3.2** Is anything cacheable that we're not caching? (System prompts, retrieved docs, computed results.)
+- **R3.3** Are we sending or processing **more data than necessary**? Can we narrow the scope (filter, paginate, summarize) before paying the cost?
+- **R3.4** What is the **worst-case** total cost for one run, including retries and continuations?
+- **R3.5** Are cost / usage signals visible to the developer for tuning (logs, telemetry, devtools)?
+
+## R4. State & lifecycle
+
+- **R4.1** What state exists *before* this operation begins?
+- **R4.2** What state exists *during* the operation (in-flight buffers, optimistic UI, pending requests)?
+- **R4.3** What state exists *after* the operation, on success and on failure?
+- **R4.4** Where does state live (server only, client only, both)?
+- **R4.5** Can each piece of state be **derived** from existing state, or does it need its own field? Default toward derived; only store what can't be computed.
+- **R4.6** What gets cleaned up when the operation ends or is interrupted?
+- **R4.7** What survives a page reload or process restart? What doesn't?
+- **R4.8** Are derived values memoized appropriately? Are stored values invalidated when their inputs change?
+
+## R5. User feedback during long operations
+
+- **R5.1** What does the user see in the **first 0–2 seconds** after triggering the action?
+- **R5.2** What does the user see during a **long blocking phase** (5s+ before any visible output)?
+- **R5.3** What does the user see during **streaming or incremental output**?
+- **R5.4** What does the user see during **retries or continuations**?
+- **R5.5** Is the liveness signal **tied to real progress**, or is it a client-side animation that runs regardless of the underlying state? Animation alone doesn't prove the operation is alive — only data flow does.
+- **R5.6** Does the indicator distinguish "working" from "stuck"?
+- **R5.7** Is there a clear terminal state (success / error / canceled)? Does the UI reach it deterministically?
+
+## R6. Security & trust
+
+- **R6.1** Where does **untrusted content** (user input, third-party API responses, model output) land in the system? Is it sandboxed, escaped, or validated at the right boundary?
+- **R6.2** Are any **secrets** exposed where they shouldn't be (env vars leaking through serialization, API keys in client code, secrets in logs)?
+- **R6.3** Are any **untrusted user inputs** validated before they reach the file system, the database, or external APIs?
+- **R6.4** If the feature could be triggered by an attacker (URL params, webhooks, public endpoints), is there a guard?
+- **R6.5** Is there any place where injection could escalate privileges (SQL injection, prompt injection, command injection, path traversal)?
+- **R6.6** Are any external dependencies (CDN imports, third-party libraries) pinned to safe sources / known versions?
+
+## R7. Iteration & escape hatches
+
+- **R7.1** Can the user **cancel** mid-operation if they realize it's wrong?
+- **R7.2** Can the user **dismiss / close / hide** the result if they don't like it, without losing the rest of their session?
+- **R7.3** Can the user **retry** with a tweaked input, and is the previous result still available for comparison?
+- **R7.4** If the operation produces a versioned thing (artifact, document, file), can older versions be **recovered or compared**?
+- **R7.5** Is there a "view raw" / "show details" escape hatch for when parsed output is wrong?
+
+## R8. Documentation
+
+- **R8.1** Is there an **ADR** for any non-obvious technical decision (architecture, format, defaults)?
+- **R8.2** Are deferred ideas captured in [`docs/backlog/`](./backlog/) as `IMP-NNN` entries?
+- **R8.3** Is feedback / observation captured in [`feedback.md`](./backlog/feedback.md) as `FB-NNN`, even if no immediate action?
+- **R8.4** Is there a **CHANGELOG** entry, with links to ADRs and backlog items, citing rubric IDs?
+- **R8.5** Are new env vars in `.env.example` (or equivalent config doc)?
+- **R8.6** Are non-obvious code paths commented (the **why**, not the what)?
+- **R8.7** Did this work reveal a transferable principle? Should it become a [knowledge point](./learning/knowledge-points.md)?
+
+## R9. Verification
+
+- **R9.1** Type-check / static analysis clean?
+- **R9.2** Linter clean?
+- **R9.3** Build clean?
+- **R9.4** Manual happy-path test passes? (Run the actual operation, observe the actual result.)
+- **R9.5** At least **one** failure-mode test passes? (Force a bad case, observe a graceful response.)
+- **R9.6** Are the dev / log streams sane (no unexpected stack traces, no flooding)?
+- **R9.7** [Project-specific health check, if any. E.g. a diagnostic endpoint, a smoke-test script, an integration test.]
+
+## R10. Phase alignment
+
+- **R10.1** Which roadmap phase does this serve? Is it on-scope for that phase?
+- **R10.2** If this is hardening on an earlier phase, is the strategic plan in [`ROADMAP.md`](../ROADMAP.md) still consistent?
+- **R10.3** Does this **set up** any specific Phase-N+1 work? Is that connection noted in ROADMAP?
+
+---
+
+## Future direction
+
+This rubric is a single document. As the project grows, plausible next steps:
+
+- Specialized rubrics for sub-domains under `docs/rubric/` if categories diverge significantly
+- Per-PR template that references rubric items by ID
+- Adapt the section list to your project's actual concerns: drop, add, reword as you learn

@@ -1,0 +1,68 @@
+# ADR-{{ADR_NUMBER_GATE}}: Initialization gate before autonomous automation
+
+- **Status:** accepted
+- **Date:** {{DATE}}
+
+## Context
+
+The project is about to introduce **autonomous evolution loops** — scheduled (cron, `/loop`, `/schedule`) Claude sessions that read the project, pick a queued improvement, implement it, and commit to a worktree branch for human review.
+
+Running automation on top of a dirty working tree would produce undefined behavior:
+
+- Agents could not distinguish their own changes from leftover human work.
+- Agents could clobber files mid-review.
+- Agents could commit mixed payloads (intended change + uncommitted noise) to a worktree branch.
+
+We need a checkpoint that defines **what counts as "the project is ready for automation."** Everything beyond that point can be assumed clean.
+
+## Decision
+
+Define an **initialization gate** — a numbered checklist of preconditions that must all hold before any autonomous evolution session is permitted to run. The gate is a project-level invariant, not a one-time setup; it must remain satisfied indefinitely.
+
+### Gate items
+
+| # | Requirement | Why |
+|---|---|---|
+| **G1** | Git is initialized in the project root | Worktree-based automation requires git |
+| **G2** | At least one commit exists on the default branch (`{{DEFAULT_BRANCH}}`) | Branches need a base to fork from |
+| **G3** | `git config user.name` and `user.email` are set | Automation commits need a stable identity |
+| **G4** | All current source code is committed to the default branch | Otherwise automation can't tell its work from yours |
+| **G5** | All discipline docs are committed (ROADMAP, ADRs, backlog, rubric, learning, CHANGELOG, CLAUDE.md / AGENTS.md) | Automation reads these as context; uncommitted state is invisible to a worktree |
+| **G6** | Working tree is clean (no uncommitted changes, no untracked tracked-pattern files) | Same reason as G4/G5 |
+| **G7** | A baseline tag exists marking the gate-passed state (e.g. `phase-1-mvp`, `baseline-v1`, `v0.1.0`) | Gives automation an unambiguous "you started from here" reference; helps humans diff against the baseline when reviewing automated work |
+| **G8** *(optional)* | A remote is configured | Required only for `git push`-based workflows; deferrable until the project actually wants pushing |
+
+### How the gate is enforced
+
+- **At gate definition (now):** human walks the checklist, makes the commits + tag needed to pass.
+- **At every autonomous run:** the autorun prompt's pre-flight checks verify G1, G2, G3, G6 minimally. If G6 fails (working tree dirty), the run **must abort** and write a status note to `docs/backlog/feedback.md` rather than proceed.
+- **At any human work:** the gate is preserved by ordinary git hygiene — commit your changes before kicking off automation.
+
+### What the gate does NOT require
+
+- Specific branching strategy beyond "default branch is named `{{DEFAULT_BRANCH}}`."
+- Any CI/CD setup. (CI is a later concern; the gate is the floor, not the ceiling.)
+- Branch protection rules. (Same — adoption is fine but not required.)
+- Code coverage / test suites. (Out of scope.)
+
+## Alternatives considered
+
+- **No formal gate; just commit before running automation.** Rejected: undocumented norms decay. New contributors (human or AI) won't know to check unless it's named and verifiable.
+- **Bake gate enforcement into a pre-commit hook.** Rejected — overkill for most project sizes, and the gate is about *running automation*, not *making commits*. The autorun pre-flight check is the right enforcement point.
+- **Make the gate a CI check.** Rejected: same reason as the hook — premature for typical project size, and CI doesn't fire on local automation runs.
+- **Skip G7 (baseline tag).** Considered. Rejected: tags cost nothing; without one, "what was the state before automation started?" requires git-log archaeology.
+
+## Consequences
+
+**Positive**
+- Automation has a clean precondition. Pre-flight checks become trivial: `git status --porcelain | wc -l` should be 0; `git rev-parse HEAD` should resolve.
+- Humans reviewing autonomous work can `git diff <baseline-tag>..autorun-branch` for an unambiguous review surface.
+- The gate concept is transferable — any project adopting agent-evolution should adopt an equivalent gate before automating.
+
+**Negative**
+- Adds a one-time barrier to enabling automation on existing projects (must commit + tag first). Acceptable; this is exactly the cost we want to pay before letting automation loose.
+- The gate must be re-passed if it's ever broken (e.g. someone leaves work uncommitted long-term and runs automation anyway). Mitigated by making the autorun pre-flight check enforce it.
+
+## Roadmap alignment
+
+Hardening on the current phase. Doesn't change strategic decisions D1–DN. Sets up the autorun system that's about to be built — autorun's pre-flight check references this ADR explicitly and aborts when the gate isn't passed.

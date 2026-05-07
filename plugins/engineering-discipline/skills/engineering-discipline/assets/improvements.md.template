@@ -1,0 +1,42 @@
+# Improvements Backlog
+
+Prioritized list of planned improvements. See [`README.md`](./README.md) for status vocabulary and workflow.
+
+Items here are commitments to address eventually — not yet decisions about *how*. When an item is implemented, the design choices it produces are captured as ADRs in [`docs/decisions/`](../decisions/).
+
+Newest on top.
+
+---
+
+<!--
+Template for a new entry:
+
+## IMP-NNN — <short title>
+
+- **Status:** `proposed` | `accepted` | `scheduled-phase-N` | `in-progress` | `done` | `wontfix`
+- **Source:** [Link to FB-NNN, or "Internal observation"]
+- **Target phase:** [Phase N, or "Phase 1 hardening", or "TBD"]
+
+### Why it matters
+
+[User-facing impact in plain language. Why this is worth the work.]
+
+### Possible approaches
+
+| Approach | Sketch | Tradeoff |
+|---|---|---|
+| **A. <name>** | [How it works] | [Costs / benefits] |
+| **B. <name>** | [How it works] | [Costs / benefits] |
+
+[Note which approach is the current preferred starting point, if any.]
+
+### Notes
+
+- [Implementation notes, gotchas, related work]
+
+### Cross-references
+
+- [FB-NNN](./feedback.md#fb-nnn-...) — original feedback
+- [ADR-NNNN](../decisions/NNNN-slug.md) — related decision, if any
+- [`CHANGELOG.md`](../../CHANGELOG.md) — implementation entry, once shipped
+-->

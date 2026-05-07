@@ -1,0 +1,41 @@
+# Backlog
+
+This folder tracks **things we plan to do but haven't yet**. It complements the other source-of-truth documents:
+
+| Doc | Scope |
+|---|---|
+| [`ROADMAP.md`](../../ROADMAP.md) | Strategic plan and phased curriculum (the *direction*) |
+| [`docs/decisions/`](../decisions/) | ADRs — decisions we've already made (the *why*) |
+| [`CHANGELOG.md`](../../CHANGELOG.md) | What has shipped and when (the *history*) |
+| **`docs/backlog/`** *(this folder)* | **Feedback received and improvements queued (the *future*)** |
+
+## Files
+
+- [`feedback.md`](./feedback.md) — chronological log of feedback and observations. The raw signal: what someone (user or contributor) said or noticed. Each entry has an ID, a date, a source, and may link to one or more improvement entries it triggered.
+- [`improvements.md`](./improvements.md) — prioritized backlog of planned improvements. Each entry has an ID, a status, the user-facing impact, possible approaches, and a target phase. Items may have a `Source:` link back to feedback entries.
+
+## Workflow
+
+1. **Capture feedback** as it arrives. Append to `feedback.md` with a new `FB-NNN` id. Don't filter — record raw observations even if no immediate action is needed.
+2. **Promote to an improvement** when feedback identifies a concrete change. Add an `IMP-NNN` entry to `improvements.md` with `Source: FB-NNN`. Multiple feedback items may point at one improvement, and vice versa.
+3. **Update status** as work progresses: `proposed` → `accepted` → `scheduled-phase-N` → `in-progress` → `done` / `wontfix`. Keep the entry in place when status changes; don't delete.
+4. **Schedule into a phase.** When we plan a roadmap phase, we look at `improvements.md` for items that fit. The roadmap may then explicitly call out specific IMP-NNN items as Phase deliverables.
+5. **Close the loop.** When an improvement ships, mark `done` and link to the relevant `CHANGELOG.md` entry. The feedback that triggered it stays in `feedback.md` as a permanent record of why it was built.
+
+## Status vocabulary
+
+| Status | Meaning |
+|---|---|
+| `proposed` | Captured; not yet evaluated for acceptance |
+| `accepted` | We've decided this is worth doing; not yet scheduled |
+| `scheduled-phase-N` | Committed to a specific roadmap phase |
+| `in-progress` | Active development |
+| `done` | Shipped; CHANGELOG entry should be linked |
+| `wontfix` | Decided not to pursue; reason recorded inline |
+
+## When to write an ADR vs add a backlog entry
+
+- **ADR**: a decision has been **made** about how to do something. Goes in [`docs/decisions/`](../decisions/).
+- **Backlog**: a problem or improvement has been **identified**, but the approach is not yet decided. Lives here until we decide and act, at which point the resulting decision goes in an ADR (or directly into a CHANGELOG if obvious).
+
+A single improvement may produce zero, one, or several ADRs once it gets implemented.

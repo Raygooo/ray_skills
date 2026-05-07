@@ -1,0 +1,27 @@
+# ADR-NNNN: <short noun phrase>
+
+- **Status:** accepted | superseded by ADR-NNNN | deprecated
+- **Date:** YYYY-MM-DD
+
+## Context
+
+What problem are we solving? What constraints or forces are at play? Write enough that someone unfamiliar with the moment can understand why a decision was needed.
+
+## Decision
+
+What did we choose to do? State it clearly enough that the implementation could be reconstructed from this section alone.
+
+## Alternatives considered
+
+- **Option A:** brief description. Why rejected.
+- **Option B:** brief description. Why rejected.
+
+(Always list at least one alternative. Without alternatives, this isn't a decision — it's an assertion.)
+
+## Consequences
+
+Positive and negative — both. What does this commit us to? What does it foreclose?
+
+## Roadmap alignment
+
+Which Phase does this serve? Which strategic decision (`ROADMAP.md` D1..DN) does it derive from? If there's tension with the roadmap, name it.

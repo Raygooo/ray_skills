@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Wrapper to fire the autonomous evolution agent.
+#
+# Suitable for cron, e.g.:
+#   0 9 * * * {{PROJECT_ROOT}}/scripts/autorun.sh >> ~/{{PROJECT_NAME}}_autorun.log 2>&1
+#
+# The actual instructions live in docs/autorun/prompt.md. This wrapper:
+#   - changes to the project root (so relative paths resolve)
+#   - feeds the prompt to claude in non-interactive mode
+#   - skips the permission prompt (the prompt enforces its own safety boundaries)
+#
+# See docs/autorun/README.md for setup and the design rationale.
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROMPT_PATH="${PROJECT_ROOT}/docs/autorun/prompt.md"
+
+if [ ! -f "$PROMPT_PATH" ]; then
+  echo "[autorun] prompt not found at $PROMPT_PATH" >&2
+  exit 1
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "[autorun] 'claude' CLI not on PATH. Install Claude Code first." >&2
+  exit 1
+fi
+
+cd "$PROJECT_ROOT"
+
+# --dangerously-skip-permissions is required for non-interactive runs.
+# The autorun prompt enforces its own safety boundaries (no {{DEFAULT_BRANCH}} commits,
+# no pushes, sandboxed worktree). See docs/decisions/{{ADR_NUMBER_LOOP}}-autonomous-evolution-loop.md.
+exec claude -p "$(cat "$PROMPT_PATH")" --dangerously-skip-permissions

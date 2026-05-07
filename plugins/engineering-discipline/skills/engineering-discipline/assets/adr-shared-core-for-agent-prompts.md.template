@@ -1,0 +1,54 @@
+# ADR-{{ADR_NUMBER_CORE}}: Shared core for agent prompts (autonomous + parent-driven)
+
+- **Status:** accepted
+- **Date:** {{DATE}}
+
+## Context
+
+The project has two ways of invoking a Claude agent to implement an `IMP-NNN`:
+
+1. **Autonomous** — fired on a schedule (cron, `/loop`, `/schedule`). The agent picks an IMP from the queue, walks the rubric, implements, commits to a worktree branch, and writes a one-screen on-disk report for the human to review later. Codified in [`docs/autorun/prompt.md`](../autorun/prompt.md), with the surrounding system in [ADR-{{ADR_NUMBER_LOOP}}](./{{ADR_NUMBER_LOOP}}-autonomous-evolution-loop.md).
+2. **Parent-driven** — a parent Claude session, working interactively, spawns a sub-agent via the Agent tool to implement one IMP in an isolated worktree, then merges the result.
+
+Without the wrapper-core split, the parent-driven path is uncodified: every parent-session invocation reinvents the autonomous prompt's "read context → walk rubric → implement → verify → commit" shape inline as a ~150-line ad-hoc prompt, with slight drift each time. The drift is harmless in a handful of invocations but compounds — two prompts solving the same problem with the same shape, never quite identical, eventually disagree on something that matters.
+
+## Decision
+
+Split the autonomous prompt into a **shared core** plus **two thin wrappers**:
+
+- `docs/autorun/core.md` — the universal "implement an IMP cleanly" workflow. Six named steps (A–F): read context, walk rubric in planning mode, flip IMP status to `in-progress`, implement, verify (rubric + `{{TYPE_CHECK_CMD}}`/`{{LINT_CMD}}`/`{{BUILD_CMD}}`), document and commit. Hard constraints declared once. Style notes declared once. Hook points named so wrappers can install side-effects without modifying the core's logic.
+- `docs/autorun/prompt.md` — the autonomous wrapper. Keeps everything that's autonomous-specific: pre-flight gate (Step 0), IMP picking with priority rules and the "no eligible IMP, propose one" fallback (Step 1), two-mode worktree setup (Step 2), in-flight status file (Step 3), final report file with rename (Step 5), single-line stdout output (Step 6). Delegates the implementation work to the core via "Read `core.md` and follow Steps A–F" in Step 4.
+- `docs/autorun/sub-agent-prompt.md` — the parent-driven wrapper. Adds a parameter section the parent fills in (IMP id), pre-flight that *verifies* the parent's setup rather than creating it, prose-report-back-to-parent at the end (no on-disk file). Same delegation pattern: "Read `core.md` and follow Steps A–F."
+
+The core has no awareness of who's calling it; the wrappers have no awareness of the implementation steps. Each side can evolve independently without the other drifting.
+
+## Alternatives considered
+
+- **Single prompt with mode parameter.** Keep `prompt.md` as the only file; parameterize via an env-style header (`AGENT_MODE={autonomous,parent-driven}`); branch on it at the steps that diverge.
+  *Rejected.* Adds branching to the prompt itself, which makes it both longer and harder to read. The autonomous-vs-parent divergence isn't one or two conditions; it's a different environment story (gate / picking / worktree / status file / report sink). Branching the whole thing in-line obscures the cleanly separable structure.
+- **New sibling, accept duplication.** Write `sub-agent-prompt.md` standalone, copying the relevant steps from `prompt.md`.
+  *Rejected.* Lowest upfront cost, highest drift risk. When one file changes, the other won't unless someone notices. Codifying duplication makes drift official.
+- **Push everything into the [`engineering-discipline`](https://github.com/Raygooo/ray_skills) skill.** Make the prompt scaffolding cross-project.
+  *Already done* — that's the skill that scaffolded these files. The wrapper-core split lives in the skill's templates so future projects inherit it; this ADR records the choice for *this* project's records.
+
+## Consequences
+
+**Positive**
+- One source of truth for "how an IMP gets implemented" (the six core steps). Changes there propagate to both invocation modes automatically.
+- Each wrapper is small enough to read in one sitting (~330 lines for autonomous, ~160 for parent-driven, vs. one ~480-line monolith).
+- The parent-driven path is now codified — the parent passes one parameter (the IMP id) and a pointer at the prompt; the sub-agent does the rest. No more ad-hoc 150-line prompts written inline.
+- The wrapper-core split mirrors the existing pattern in this project's docs system: `docs/rubric.md`, `docs/decisions/template.md`, and the IMP/FB/KP conventions are all shared resources the autorun prompt references rather than duplicates. Extending the same pattern into the agent prompts themselves.
+
+**Negative**
+- One more file to discover. Newcomers reading `prompt.md` will hit "Read `core.md` and follow Steps A–F" in Step 4 and have to context-switch. README.md's file table mitigates this; it's a real cost.
+- The split adds an indirection. A change that affects both files requires editing two places (the wrapper's hooks + the core's step) and ordering the diffs carefully. Less cost than maintaining duplicated prose, but not zero.
+- Hook points (named boundaries the wrappers can install side-effects at) introduce a small contract surface between core and wrappers. If the core renames a step, the wrappers' hook tables silently drift. Mitigation: hook points use named steps (Step B, C, D, E, F), not numbered references; rename-resistance comes from naming.
+
+**What this commits us to**
+- The core is now the canonical "what an agent does to implement an IMP." Changes to that workflow happen in `core.md` once.
+- The autonomous loop's external behavior is unchanged. Existing reports, gate checks, worktree-mode handling, status-file flow — all preserved verbatim. This is a refactor, not a redesign.
+- New invocation modes added in the future (e.g. a chat-bot wrapper, a CI-pipeline wrapper) follow the same pattern: small wrapper that delegates to `core.md`.
+
+## Roadmap alignment
+
+Hardening on the autonomous-evolution layer. The wrapper-core pattern is the substrate for any future invocation context (CI, chat-bot, REPL). Doesn't change strategic decisions D1–DN.

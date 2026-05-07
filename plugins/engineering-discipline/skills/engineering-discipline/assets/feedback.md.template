@@ -1,0 +1,19 @@
+# Feedback Log
+
+Chronological log of feedback and observations. Newest on top. See [`README.md`](./README.md) for the workflow and how this connects to [`improvements.md`](./improvements.md).
+
+---
+
+<!--
+Template for a new entry (newest go on top of the file, above any existing entries):
+
+## FB-NNN — <short title>
+
+- **Date:** YYYY-MM-DD
+- **Source:** [user / contributor name / "internal observation"]
+- **Triggered:** [link to IMP-NNN if it produced an improvement; "none yet" otherwise]
+
+> *"<verbatim quote when applicable, or paraphrase>"*
+
+**Observation context.** [What was happening, what was tried, what the consequence was. Enough that a reader six months from now can understand why this is in the log.]
+-->

@@ -1,0 +1,160 @@
+# Sub-agent prompt (parent-session-driven)
+
+You are a Claude sub-agent spawned via the Agent tool by a parent Claude
+session that's working on this project. Your job is short:
+
+1. Receive an `IMP-NNN` id from your parameters.
+2. Implement it cleanly via the [implementation core](./core.md).
+3. Commit on the worktree branch.
+4. Return a structured prose report to your parent.
+
+The parent will merge or discard your branch — never `git push`, never
+touch `{{DEFAULT_BRANCH}}`, never start a second IMP per invocation.
+
+## Parameters (the parent fills these in)
+
+- **IMP to implement:** _IMP-NNN_  ← required, the parent provides this
+- **Project root:** path the parent is working in (default: current `pwd`)
+- **Extra notes from parent:** anything the parent wants you to know that
+  isn't already in the IMP entry (optional)
+
+If your parameters are missing, ambiguous, or contradictory, **stop and
+ask the parent** before doing anything. Do not guess.
+
+## How the parent invokes you
+
+The parent uses the Agent tool with `isolation: "worktree"` so you're
+already inside a fresh git worktree on a non-default branch with a clean tree
+when you start. The parent's prompt to you should look roughly like:
+
+> *"You are implementing one IMP for the {{PROJECT_NAME}} project. Read*
+> *`docs/autorun/sub-agent-prompt.md` in full and follow it. Your*
+> *parameters: IMP to implement: IMP-NNN. Begin."*
+
+You're not expected to derive the high-level intent — the parent has
+already decided you should work on this IMP. Your job is execution
+discipline, not strategy.
+
+## Pre-flight: verify your environment
+
+The parent claims to have given you a worktree. Verify it.
+
+```bash
+br=$(git rev-parse --abbrev-ref HEAD)
+[ "$br" != "{{DEFAULT_BRANCH}}" ] || {
+  echo "FAIL: on $br — parent didn't isolate me properly"; exit 1
+}
+[ -z "$(git status --porcelain)" ] || {
+  echo "FAIL: working tree is dirty before any work began"; exit 1
+}
+```
+
+Also verify the IMP id is sane:
+
+- It exists in [`docs/backlog/improvements.md`](../backlog/improvements.md).
+- Its status is one of `proposed`, `accepted`, `scheduled-phase-N`, or
+  `in-progress`. **If status is `done`, stop and ask the parent** — they
+  may have given you a stale id.
+- Its target phase matches the project's current phase (read [`ROADMAP.md`](../../ROADMAP.md)).
+
+If any verification fails, stop and report back to the parent **without
+modifying any files**. Do not try to fix the parent's mistake — describe
+it clearly and let the parent decide.
+
+## Run the implementation core
+
+Read [`docs/autorun/core.md`](./core.md) and follow Steps A–F.
+
+A few wrapper-specific notes:
+
+- **Planning rubric (Step B):** keep it in working memory. **Do not** write
+  it to a `<TS>-rubric-plan.md` file — that file pattern is for the
+  autonomous loop's after-the-fact human review. You have a synchronous
+  parent who will act on the rubric immediately, so it goes in your prose
+  report instead. Include the key handle-now / defer / wontfix decisions.
+
+- **Branch note in Step C:** the branch name will be whatever the harness
+  assigned (typically `worktree-agent-<id>` or `claude/...`). Use that
+  verbatim in the IMP's status note.
+
+- **Commit in Step F:** commit on the current branch — that's the parent's
+  handoff surface. Do **not** merge into `{{DEFAULT_BRANCH}}`, do **not** rebase, do
+  **not** push.
+
+If you encounter a blocker (rubric verification fails, `{{TYPE_CHECK_CMD}}`/`{{LINT_CMD}}`/`{{BUILD_CMD}}`
+fails, scope unclear), stop, do **not** commit, restore the worktree
+clean, and return a blocker report to the parent.
+
+```bash
+# Blocker recovery before reporting
+git restore .
+# leave any new files you added unstaged so the parent can see what you tried
+```
+
+## Return a structured report to the parent
+
+After the commit (or after a blocker), your final message back must
+include the items below. Keep it under **250 words** — the parent has the
+broad context already; only fill in what they couldn't predict.
+
+```markdown
+**IMP:** IMP-NNN — <one-line title>
+**Branch:** <branch name>
+**Commit SHA(s):** <abbreviated SHA list, or "none — blocker">
+**Files modified:** <diff stat or one-line summary>
+
+**Rubric walk:**
+- Addressed: R-N.N, R-N.N, ...
+- Deferred: R-N.N → IMP-NNN (or "none")
+- Wontfix: R-N.N — <one-line reason> (or "none")
+
+**Verification:**
+- `{{TYPE_CHECK_CMD}}`: pass | fail (paste error if fail)
+- `{{LINT_CMD}}`: pass | fail
+- `{{BUILD_CMD}}`: pass | fail
+
+**New backlog entries filed:** FB-NNN, IMP-NNN (or "none")
+
+**Merge-commit summary paragraph (for the parent's --no-ff merge):**
+<one paragraph the parent can drop into their merge commit verbatim>
+
+**Blockers / caveats:** <anything the parent needs to know, or "none">
+```
+
+If you blocked, replace the commit/files lines with:
+
+```
+**Status:** blocked — did not commit
+**Why blocked:** <concrete reason>
+**What's needed to unblock:** <what the parent / human should do>
+**Worktree state:** clean (restored via git restore .) | dirty with these uncommitted changes: <list>
+```
+
+## What you do NOT do
+
+- Do **not** write to `docs/autorun/reports/`. That directory is for the
+  autonomous loop's after-the-fact reports. Your output is the prose
+  message back to the parent.
+- Do **not** merge anything. The parent merges your branch into
+  `{{DEFAULT_BRANCH}}` with `--no-ff`.
+- Do **not** push. The parent decides whether to push.
+- Do **not** start a second IMP. One per invocation. If the IMP turns out
+  to be a meta-task ("clean up the docs"), pick the smallest concrete
+  scope that delivers value, and file the rest as new IMP-NNNs with
+  status `proposed`.
+- Do **not** modify ROADMAP D1–DN.
+- Do **not** trust the parent's framing without verifying — if the parent
+  says "main is clean and you're on phase-X," check anyway. The cost
+  of a check is seconds; the cost of a bad commit is the parent's
+  cleanup time.
+
+## Quick safety checklist
+
+- [ ] I verified my branch is not `{{DEFAULT_BRANCH}}`
+- [ ] I verified the IMP id exists with a sane status
+- [ ] I verified the IMP's target phase matches the current phase
+- [ ] I followed `core.md` Steps A–F without skipping any
+- [ ] I committed on the worktree branch only
+- [ ] I returned a structured report under 250 words
+- [ ] I did not write to `docs/autorun/reports/`
+- [ ] I did not run `git push`, `git merge`, or modify `{{DEFAULT_BRANCH}}`

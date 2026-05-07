@@ -13,6 +13,16 @@
       "name": "marketplace-contributor",
       "source": "./plugins/marketplace-contributor",
       "description": "Meta-plugin for contributing to this marketplace: author new skills, scaffold new plugins, and register them locally"
+    },
+    {
+      "name": "parallel-orchestrator",
+      "source": "./plugins/parallel-orchestrator",
+      "description": "Split a project into file-disjoint slices, dispatch parallel sub-agents into git worktrees via the Agent tool, merge cleanly — without copy-pasting prompts to other sessions"
+    },
+    {
+      "name": "engineering-discipline",
+      "source": "./plugins/engineering-discipline",
+      "description": "Set up and maintain a six-document source-of-truth system for any software project (strategic roadmap, immutable ADRs, feedback + improvements backlog, pre-implementation rubric, knowledge-points learning log, cross-linked changelog) — with an optional agent-evolution layer on top: an autonomous evolution loop (cron / /loop / /schedule) and a parent-driven sub-agent prompt (Agent tool), both built on a shared implementation core"
     }
   ]
 }

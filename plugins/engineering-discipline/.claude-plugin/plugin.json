@@ -1,0 +1,22 @@
+{
+  "name": "engineering-discipline",
+  "description": "Set up and maintain a six-document source-of-truth system for any software project: strategic roadmap, immutable architecture decisions (ADRs), feedback and improvements backlog, pre-implementation rubric, knowledge-points learning log, and a cross-linked changelog.",
+  "version": "0.1.0",
+  "author": {
+    "name": "raygooo",
+    "email": "lovzoe@hotmail.com"
+  },
+  "repository": "https://github.com/Raygooo/ray_skills",
+  "license": "MIT",
+  "keywords": [
+    "engineering-discipline",
+    "documentation",
+    "adr",
+    "architecture-decision-records",
+    "rubric",
+    "changelog",
+    "backlog",
+    "knowledge-management",
+    "project-onboarding"
+  ]
+}

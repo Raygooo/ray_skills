@@ -1,0 +1,39 @@
+# Changelog
+
+What landed and when, organized by roadmap phase. The **why** for each decision lives in [`docs/decisions/`](./docs/decisions/) — this file is the **what**.
+
+Newest entries on top. When a phase wraps, summarize it in a short paragraph at the start of that phase's section.
+
+Every entry should:
+
+- Cite the rubric items it addresses (`Addresses R3.4, R5.1; defers R7.2 → IMP-NNN`)
+- Link to any ADRs it produced
+- Link to any backlog entries (FB-NNN, IMP-NNN) it touched
+
+---
+
+## Phase 1 — [phase name] (in progress)
+
+<!-- Append entries below. Newest on top. Use the template at the bottom of this file. -->
+
+---
+
+<!--
+Template for a new entry:
+
+### YYYY-MM-DD — short title
+
+**Triggered by:** what motivated the change (bug, request, learning, decision). Link FB-NNN if applicable.
+
+**Changes**
+- file/area — what changed in one line. Link to ADR if non-obvious.
+
+**ADRs added** (if any)
+- [ADR-NNNN](./docs/decisions/NNNN-slug.md) — title
+
+**Backlog entries added** (if any)
+- [FB-NNN](./docs/backlog/feedback.md#fb-nnn-...) — title
+- [IMP-NNN](./docs/backlog/improvements.md#imp-nnn-...) — title
+
+**Rubric items addressed:** Addresses R-N.N, R-N.N. Defers R-N.N → IMP-NNN. Wontfix R-N.N (reason).
+-->

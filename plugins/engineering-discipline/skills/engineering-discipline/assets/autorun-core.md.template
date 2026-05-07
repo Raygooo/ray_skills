@@ -1,0 +1,225 @@
+# IMP implementation core
+
+The universal "implement an IMP cleanly" workflow. Used by every Claude
+agent that takes one improvement from `docs/backlog/improvements.md` and
+turns it into a commit on a worktree branch.
+
+This file defines the shared spine. Two wrappers around it specify how the
+agent is invoked and where the output goes:
+
+- [`prompt.md`](./prompt.md) — autonomous evolution loop (cron, `/loop`,
+  `/schedule`). Adds pre-flight gate, IMP picking from the queue, two-mode
+  worktree setup, in-flight status file, on-disk report.
+- [`sub-agent-prompt.md`](./sub-agent-prompt.md) — parent-session-driven
+  invocation via the Agent tool. Receives the IMP id as a parameter,
+  verifies preconditions instead of creating them, returns a structured
+  report to the parent in chat.
+
+The wrappers are small. The bulk of the work lives here.
+
+## Hard constraints (always, in any wrapper)
+
+1. **Never commit to `{{DEFAULT_BRANCH}}`.** All work happens on a worktree
+   branch.
+2. **Never push.** No `git push` under any circumstances.
+3. **Never modify strategic decisions** (D1–DN in [`ROADMAP.md`](../../ROADMAP.md)). Those are human-only.
+4. **Never touch files outside the chosen IMP's scope.** No drive-by
+   refactors, no "while I'm here" cleanups.
+5. **Never skip the rubric.** Walk it twice — planning mode before code,
+   verification mode after.
+6. **Never proceed if `{{TYPE_CHECK_CMD}}` / `{{LINT_CMD}}` / `{{BUILD_CMD}}` fails** at the verification
+   stage. Revert the work and write a blocker note instead.
+7. **Pick exactly one improvement per invocation.** Resist scope creep.
+
+If any constraint is at risk, stop and write a status note rather than push
+through.
+
+## Preconditions the wrapper must establish before calling in
+
+Both wrappers guarantee these before they hand off to the core. The core
+re-verifies them as a sanity check at the start of Step A.
+
+- You are in a git worktree (not the main checkout).
+- The current branch is not `{{DEFAULT_BRANCH}}`.
+- The working tree is clean (`git status --porcelain` is empty).
+- A specific `IMP-NNN` has been chosen, and its id is known.
+- The IMP's status is sane to start work on: `proposed`, `accepted`,
+  `scheduled-phase-N` (where N is the current phase), or `in-progress`.
+
+```bash
+# Run this at the top of Step A. Any failure → stop, report to wrapper.
+br=$(git rev-parse --abbrev-ref HEAD)
+[ "$br" != "{{DEFAULT_BRANCH}}" ] || { echo "FAIL: on $br"; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "FAIL: working tree dirty"; exit 1; }
+# (IMP id sanity check is wrapper-specific.)
+```
+
+If a sanity check fails, stop and tell the wrapper. Do not try to recover —
+the wrapper's environment is the wrapper's problem.
+
+---
+
+## Step A — Read the project's context
+
+Read these in order, fully:
+
+1. [`CLAUDE.md`](../../CLAUDE.md) — project orientation
+2. [`ROADMAP.md`](../../ROADMAP.md) — strategic plan, current phase, deliverables
+3. Top of [`CHANGELOG.md`](../../CHANGELOG.md) — what's been happening recently (last ~5 entries)
+4. The chosen IMP's entry in [`docs/backlog/improvements.md`](../backlog/improvements.md)
+5. Any FB / IMP entries cross-referenced from the chosen IMP
+6. [`docs/rubric.md`](../rubric.md) — the checklist you'll walk twice
+
+Form a mental model. Identify the **current phase** from ROADMAP. Verify the
+chosen IMP's target phase matches. If it doesn't, stop and tell the wrapper —
+the wrapper is responsible for picking phase-aligned items.
+
+## Step B — Walk the rubric in PLANNING mode
+
+For every item in [`docs/rubric.md`](../rubric.md) (R1.1 through R10.x), make
+one of three decisions for the chosen IMP:
+
+- **handle now** — implement an answer in this change
+- **defer** — file a follow-up `IMP-NNN` for later (or note an existing one)
+- **wontfix** — explicitly skip with a one-line reason
+
+If many items are deferred or `wontfix`, that's a signal the chosen IMP is
+too ambitious. Consider stopping and telling the wrapper that a smaller scope
+is needed.
+
+**Where to put the planning rubric:** wrapper's choice.
+
+- Autonomous wrapper writes it to `docs/autorun/reports/<TS>-rubric-plan.md`
+  so the human can review it after-the-fact.
+- Parent-driven wrapper keeps it in working memory and includes the key
+  items in the prose report back to the parent.
+
+The decisions matter, not the file format. Make them concretely; abstract
+"I'll keep that in mind" doesn't count.
+
+## Step C — Flip the IMP status to `in-progress`
+
+In [`docs/backlog/improvements.md`](../backlog/improvements.md), change the
+chosen `IMP-NNN`'s status from its current value (`proposed` / `accepted` /
+`scheduled-phase-N`) to `in-progress`. Add a one-line note:
+
+> *"Started YYYY-MM-DD on branch `<current-branch>`."*
+
+(The branch name encodes which agent took the work — autonomous uses
+`autorun/<TS>`; parent-driven uses whatever the harness assigned.)
+
+## Step D — Implement the change
+
+Apply the planned changes. Stay strictly inside the IMP's scope.
+
+- No drive-by refactors.
+- No "while I'm here" cleanups.
+- If you discover a separate issue, capture it as a new `FB-NNN` (and
+  optionally an `IMP-NNN` with status `proposed`) and continue with the
+  original IMP. Do not absorb the new issue into the current commit.
+
+Run `{{TYPE_CHECK_CMD}}`, `{{LINT_CMD}}`, `{{BUILD_CMD}}` periodically during work to catch issues early.
+
+## Step E — Verify
+
+Walk the rubric again, this time in **verification mode**. For every item
+the planning rubric flagged "handle now": is the answer *true now in the
+code*? The check isn't "did I think about it" but "is it true."
+
+If any "handle now" item now fails verification:
+
+- Try to fix it, if cheap.
+- Otherwise revert the work (`git restore .`), set the IMP status back to
+  its prior value, and tell the wrapper a blocker note. Do not commit.
+
+Run the full check:
+
+```bash
+{{TYPE_CHECK_CMD}}
+{{LINT_CMD}}
+{{BUILD_CMD}}
+```
+
+All three must pass. If any fails:
+
+- Try to fix.
+- If you can't fix in this run: `git restore .`, set IMP status back, tell
+  the wrapper a blocker note. Do **not** commit.
+
+## Step F — Document and commit
+
+Update these files in the worktree (in this order):
+
+1. **`docs/backlog/improvements.md`** — set the IMP's status to `done` and
+   link the new CHANGELOG entry.
+2. **`docs/decisions/`** — if the change involved a non-obvious decision,
+   write an ADR (`NNNN-slug.md`). Use [`docs/decisions/template.md`](../decisions/template.md). Update [`docs/decisions/README.md`](../decisions/README.md) index.
+3. **`docs/learning/knowledge-points.md`** — if the change demonstrated a
+   transferable concept worth naming, propose one new KP. Skip if nothing
+   genuinely general emerged. Quality over quantity — a handful per phase,
+   not per commit.
+4. **[`CHANGELOG.md`](../../CHANGELOG.md)** — append an entry at the top of
+   the current phase, citing rubric items by ID, linking to ADRs / IMPs / FBs.
+
+Stage **specific files** (not `git add .`):
+
+```bash
+git add docs/backlog/improvements.md
+git add CHANGELOG.md
+# add specific source/doc files you changed
+git add <each-changed-file>
+```
+
+Commit with a message matching the project's existing style. Read recent
+commits with `git log --oneline -5` to see the format. End with the
+co-author trailer:
+
+```
+<short subject line — match recent commit style>
+
+<one-paragraph body explaining what changed and why; reference IMP-NNN>
+
+Closes IMP-NNN. Addresses rubric R-N.N. See ADR-NNNN.
+
+{{COMMIT_TRAILER}}
+```
+
+Use a HEREDOC to pass the message so multi-line formatting survives the
+shell. After the commit, the worktree branch is the handoff surface — the
+wrapper decides what happens next (writes a report file, returns prose to a
+parent, etc.).
+
+---
+
+## Style notes
+
+- Match the project's existing voice. Read a few recent CHANGELOG entries
+  and ADRs and write in that register.
+- Cross-link aggressively. ADR → ROADMAP phase. KP → ADR. CHANGELOG entry
+  → IMP → FB. The cross-links *are* the discipline; they're not optional.
+- Be honest in any report you write. If something is half-done, say it's
+  half-done. The human merges based on the report; you're not graded on
+  optimism.
+- If a rubric item makes you uncomfortable on the chosen IMP, you may have
+  the wrong IMP. Stop and tell the wrapper.
+
+## Hooks the wrappers may install
+
+The wrappers are allowed to insert side-effects at named step boundaries
+without changing the core's logic. Today the autonomous wrapper installs
+status-file appends; future wrappers might add telemetry or remote
+notifications. Hook points (using the step letters above):
+
+| Boundary | What a wrapper might do |
+|---|---|
+| After Step B | Persist the planning rubric (autonomous: file; parent: prose) |
+| After Step C | Mark "IMP in-progress" in any external tracker |
+| Start of Step D | Mark "implementation started" |
+| Start of Step E | Mark "verification started" |
+| After Step E build pass | Mark "build passed" |
+| Before staging in Step F | Mark "ready to commit" |
+
+Hooks must not change which files are edited or which commands are run by
+the core. If a wrapper needs to do something that changes the core's
+output, that's a sign the core itself needs a new step — propose it, don't
+hack the wrapper.

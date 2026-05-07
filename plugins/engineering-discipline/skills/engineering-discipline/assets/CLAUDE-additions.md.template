@@ -1,0 +1,91 @@
+<!--
+This template provides the sections that should be added to your CLAUDE.md (or
+AGENTS.md) so AI sessions have a cold-start onboarding into the engineering-
+discipline system.
+
+If your project has no CLAUDE.md yet, create one with these sections.
+If it has one, splice in the sections that aren't already present.
+
+The "Quickstart for a cold session" should be at the very top — before any
+existing detail. The other sections can go in whatever order fits your file.
+-->
+
+## Quickstart for a cold session
+
+Read this section in full before answering. Saves you from relitigating choices that are already settled.
+
+**What this project is.** [One paragraph: project description, target users, dual-purpose goals if any.]
+
+**Where we are.** [Current phase, link to top of CHANGELOG.md.]
+
+**Stack.** [Languages, frameworks, key dependencies. Note any deliberate "no framework yet" stances.]
+
+**Workflow when you receive a request:**
+
+1. Read this whole file.
+2. Skim the linked docs in **Document map** below.
+3. For non-trivial feature work, walk [`docs/rubric.md`](./docs/rubric.md) **before** writing code. Decide for each item: *handle now / defer with backlog entry / wontfix with reason*.
+4. Write code. Keep changes minimal — don't refactor adjacent code unless asked.
+5. Walk the rubric again **after** implementing. Update [`CHANGELOG.md`](./CHANGELOG.md) citing rubric items by ID. For non-obvious decisions, write an ADR. For deferred ideas, add a backlog entry.
+6. At meaningful moments, propose a knowledge point.
+
+**What not to break:**
+
+- The 6-document source-of-truth system (the **Document map**). Don't replace, condense, or restructure without an explicit ask.
+- Strategic decisions D1..DN in [`ROADMAP.md`](./ROADMAP.md). Don't relitigate. New tactical decisions go into ADRs or the backlog.
+- The cross-linking discipline: CHANGELOG → ADR → backlog → rubric. Every meaningful change leaves an evidence trail.
+- [Any project-specific load-bearing decisions.]
+
+## Document map
+
+```
+strategic   →  ROADMAP.md           vision + N strategic decisions (D1..DN)
+decisions   →  docs/decisions/      ADRs, one per non-obvious choice (immutable)
+queued      →  docs/backlog/        FB-NNN feedback, IMP-NNN improvements
+standards   →  docs/rubric.md       R1–R10 feature checklist
+learning    →  docs/learning/       KP-NNN transferable concepts
+history     →  CHANGELOG.md         what shipped when, organized by phase
+```
+
+A change in CHANGELOG cites the rubric items it addresses; an ADR notes the roadmap phase it serves; an FB/IMP backlog entry links to the feedback that triggered it; a KP links to the ADR or feedback that demonstrated it. Any decision can be traced backward to its origin and forward to its impact.
+
+## Recording changes (mandatory)
+
+Every meaningful change must leave a paper trail in **at least** these places:
+
+1. **`CHANGELOG.md`** — append an entry under the current phase: what changed, what triggered it, links to ADRs if any, rubric IDs addressed. New entries on top.
+2. **`docs/decisions/`** — if the change involves a non-obvious decision, write an ADR. Use [`docs/decisions/template.md`](./docs/decisions/template.md). Increment the four-digit number; update the index in [`docs/decisions/README.md`](./docs/decisions/README.md).
+3. **`ROADMAP.md`** — update if the strategic plan, deliverables list, or D1..DN changes. Don't update for tactical-only changes.
+4. **`docs/backlog/`** — if a change *implements* an existing IMP-NNN, update its status (`in-progress` → `done`) and link the CHANGELOG entry. If a change *generates new ideas* not addressed in this commit, append them as `IMP-NNN` entries with status `proposed`.
+
+## Recording feedback and ideas (mandatory)
+
+- **Whenever a user (or you) identifies a problem or suggests an improvement** that isn't being addressed in the current commit: append an `FB-NNN` entry to [`docs/backlog/feedback.md`](./docs/backlog/feedback.md) with date, source, verbatim quote (when applicable), and observation context.
+- **Whenever feedback identifies a concrete change** to make: add a corresponding `IMP-NNN` entry to [`docs/backlog/improvements.md`](./docs/backlog/improvements.md) with `Source: FB-NNN`, possible approaches, and a target phase.
+- Don't filter — record raw observations even if no immediate action is planned.
+
+ADRs are **immutable once accepted**. To change a decision, write a new ADR and mark the old one `superseded by ADR-NNNN`. Backlog entries are mutable — status can be updated as work progresses.
+
+## Using the rubric (mandatory for non-trivial features)
+
+Every meaningful feature must be **walked through [`docs/rubric.md`](./docs/rubric.md) twice**:
+
+1. **Before implementing** — review every section; for each item, decide *handle now / defer with backlog entry / wontfix with reason*.
+2. **After implementing** — re-walk the rubric against the actual code. The check isn't "did I think about it" but "is it true now."
+
+Cite rubric items by ID in the **CHANGELOG entry** for the change: e.g. *"Addresses R3.4, R5.1; defers R7.2 → IMP-007."*
+
+Trivial changes (typo fix, dependency bump, doc-only update) don't need a rubric walk.
+
+## Proposing knowledge points
+
+When working with the human author, the AI collaborator should propose a new entry in [`docs/learning/knowledge-points.md`](./docs/learning/knowledge-points.md) at meaningful moments:
+
+- After a major feature ships and we can name the pattern it embodied
+- After feedback reveals a transferable principle
+- After a significant ADR is accepted whose reasoning generalizes
+- At phase transitions in the roadmap
+
+Trigger volume target: **a handful per phase**, not per commit. Quality over quantity. Each KP should be: a one-sentence concept definition, a concrete reference to project work, a why-it-matters that's divorced from this specific project, and links. The human author can decline, edit, or accept.
+
+The goal of this system is explicit: the human is using AI assistance to ship faster than they otherwise would, and they don't want that to come at the cost of internalizing the concepts. Propose KPs with that frame in mind.

@@ -1,0 +1,80 @@
+# Roadmap
+
+This document is the source of truth for **project direction** — vision, strategy, phased plan. New sessions (human or AI) should read this first.
+
+For the **why** behind specific tactical choices, see [`docs/decisions/`](./docs/decisions/). For **what landed when**, see [`CHANGELOG.md`](./CHANGELOG.md). For **what's queued but not yet built**, see [`docs/backlog/`](./docs/backlog/). The full source-of-truth set:
+
+| Doc | Scope | Cadence |
+|---|---|---|
+| `ROADMAP.md` (this file) | Vision, phases, the strategic decisions D1..DN | Updated rarely; only when strategy changes |
+| `docs/decisions/` | Tactical ADRs — one per non-obvious decision | One file per decision; immutable once accepted |
+| `docs/backlog/` | Feedback received + improvements queued | Mutable; entries updated as work progresses |
+| `docs/rubric.md` | Feature checklist (R1–R10) walked before & after every change | Stable; evolves rarely |
+| `docs/learning/` | Knowledge points — transferable concepts | Append-only; new entries at meaningful moments |
+| `CHANGELOG.md` | What shipped and when, organized by phase | Appended every meaningful change |
+
+## North Star
+
+<!-- One paragraph: what this project is, who it's for, and what success looks like.
+     Concrete enough that someone reading this in 6 months can recognize whether
+     the current work is on-mission. -->
+
+[Describe the project's vision here.]
+
+## Motivation
+
+<!-- Why does this project exist? What problem does it solve that nothing else does?
+     If there's a personal or organizational growth dimension (e.g., learning a new
+     stack, transitioning roles), call it out — that affects which trade-offs get
+     prioritized. -->
+
+[Describe the motivation here.]
+
+## Decision log
+
+Strategic decisions live here. They shape the whole project. Tactical decisions go in [`docs/decisions/`](./docs/decisions/) as ADRs.
+
+### D1 — [first strategic decision]
+
+[One paragraph: what we chose and why. Reference any ADRs that are derivative.]
+
+### D2 — [second strategic decision]
+
+[One paragraph.]
+
+<!-- Add D3, D4 etc. as needed. Don't renumber once assigned. -->
+
+## Phased plan
+
+### Phase 1 — [phase name] [current]
+
+**Ship goal.** [One sentence: what works at the end of this phase.]
+
+**Deliverables.**
+- [Concrete deliverable 1]
+- [Concrete deliverable 2]
+
+**Done when.** [Crisp, observable criterion.]
+
+---
+
+### Phase 2 — [phase name]
+
+**Ship goal.** [...]
+
+**Deliverables.**
+- [...]
+
+**Done when.** [...]
+
+---
+
+<!-- Add Phase 3, Phase 4 etc. -->
+
+## Out of scope
+
+<!-- Things people might assume are in scope but aren't, with brief reasons.
+     Useful to short-circuit recurring "should we add X" conversations. -->
+
+- [Something explicitly out of scope]
+- [Another]

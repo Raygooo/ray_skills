@@ -1,0 +1,65 @@
+# ADR-{{ADR_NUMBER_LOOP}}: Autonomous evolution loop with worktree isolation
+
+- **Status:** accepted
+- **Date:** {{DATE}}
+
+## Context
+
+Project work has settled into a clear cadence: read backlog → pick an improvement → walk the rubric → implement → document → commit. We want this cycle to run **autonomously** on a schedule (cron, `/loop`, `/schedule`) so the project evolves day-by-day without requiring a manual trigger each time.
+
+The risks of autonomous LLM-driven evolution are real:
+
+- An agent could commit experimental work directly to the default branch, polluting the stable branch.
+- An agent could push to a remote without authorization.
+- An agent could go off-roadmap, working on tangents that don't align with the current phase.
+- An agent could implement a half-finished feature with the build broken.
+- Multiple parallel runs could conflict on the same files.
+- A long-running session could rack up token cost on low-value work.
+
+We need a design that lets the loop run unattended **and** keeps the human in the loop on what actually merges.
+
+## Decision
+
+Implement the autonomous loop with these load-bearing constraints:
+
+1. **Worktree isolation.** Every run creates a fresh git worktree at `../<repo>_autorun_<UTC_TIMESTAMP>` on a fresh branch `autorun/<UTC_TIMESTAMP>`, branched from `{{DEFAULT_BRANCH}}`. The original checkout's `{{DEFAULT_BRANCH}}` is never touched by the agent.
+2. **No pushes.** The agent never runs `git push`. The worktree branch is the handoff surface; the human reviews the diff and merges (or discards) when ready.
+3. **Pre-flight gate enforcement.** Before doing anything, the agent verifies the [initialization gate](./{{ADR_NUMBER_GATE}}-initialization-gate.md) (G1, G2, G3, G6 minimum). If the gate fails, the agent writes an `FB-NNN` entry and stops. No worktree, no commits.
+4. **One IMP per run.** The agent picks exactly one `IMP-NNN` per run from the backlog, prioritized: `in-progress` → `scheduled-phase-N` (matching current phase) → `accepted`. No drive-by changes, no scope creep.
+5. **Strategic decisions are off-limits.** ROADMAP D1–DN are human-only. The agent's prompt explicitly forbids editing them.
+6. **Rubric walk both ways.** Planning mode before code, verification mode after. Planning rubric output is committed to the report folder as audit trail.
+7. **Build gate.** `{{TYPE_CHECK_CMD}}` + `{{LINT_CMD}}` + `{{BUILD_CMD}}` must pass before any commit. If they fail, the agent reverts and writes a blocker note instead of committing broken code.
+8. **No-eligible-IMP fallback.** If no eligible item exists, the agent generates **one** new `IMP-NNN` proposal (status `proposed`) and stops. Implementation requires human acceptance before the next run touches it.
+9. **Mandatory report.** Every run, success or abort, writes a one-screen report at `docs/autorun/reports/<UTC_TIMESTAMP>.md`. The report is the human's decision surface.
+
+The full prompt lives at [`docs/autorun/prompt.md`](../autorun/prompt.md). It's self-contained — feeding it to a fresh Claude session via `claude -p "$(cat docs/autorun/prompt.md)"` (or `/loop`, or `/schedule`) is sufficient. The agent loads its own context.
+
+## Alternatives considered
+
+- **Direct commits to the default branch, no worktree.** Rejected: the human review surface disappears. A bad commit is much harder to back out than a discarded worktree.
+- **Pull request workflow on a remote (GitHub).** Considered. Deferred — requires G8 (remote configured), which is currently deferred. When G8 is satisfied, this becomes a layer on top: agent pushes the worktree branch, opens a PR, human reviews on GitHub. Compatible with the current design.
+- **Multi-agent parallel evolution (one agent per IMP, several at once).** Considered. Rejected for v1 — single-agent serial runs are simpler to reason about. The [`parallel-orchestrator`](https://github.com/Raygooo/ray_skills) skill is available for explicit parallel-by-fanning-out work, but autonomous parallelism risks merge conflicts on shared docs (CHANGELOG, backlog).
+- **Human-approved branch promotion (auto-merge after rubric passes).** Rejected: defeats the purpose of human review. The whole system rests on the human staying in the merge decision.
+- **No autonomous loop; human triggers everything.** Rejected: that's the manual baseline, and we explicitly want daily evolution without manual triggering. The constraints above make autonomous viable while preserving human control of what ships.
+- **`git add .` in the agent's commit step.** Rejected: too easy to include unintended files (cache directories, dot-files, accidental writes). The prompt mandates explicit per-file `git add`.
+
+## Consequences
+
+**Positive**
+- Project evolves daily without a manual trigger.
+- The human's role narrows to **review** (read report, merge or discard) — high-leverage, doesn't require rebuilding context.
+- Worktree branches accumulate as a real audit trail. If a reviewer doesn't get to today's work for a week, six branches are waiting; they review them in order.
+- Combines naturally with the existing engineering-discipline system — every run uses the rubric, writes a CHANGELOG entry, possibly an ADR, possibly a KP. The discipline is the agent's working memory.
+- Fits all three autonomous invocation patterns (cron, `/loop`, `/schedule`) with no design changes.
+- Sets up the parent-driven sub-agent pattern as a natural extension — same core, different wrapper.
+
+**Negative**
+- Worktrees consume disk space. Mitigation: a periodic cleanup script (or human routine) to remove old reviewed worktrees.
+- The agent may produce work the human doesn't want. Mitigation: easy to discard worktrees; reviewing one report per day is the human's only obligation.
+- Token cost accumulates daily. Mitigation: each run is bounded to one IMP; the rubric walk + implementation + docs is a few thousand tokens at most.
+- The agent's quality is bounded by the clarity of `IMP-NNN` entries. Mitigation: when feedback comes in, write good improvements. The system rewards clean queue hygiene.
+- If a remote is added later (G8), the design needs a small adjustment (push-then-PR vs. local worktree). Acceptable; documented above.
+
+## Roadmap alignment
+
+Hardening / meta-tooling on top of the gate-passed baseline. Doesn't change strategic decisions D1–DN. The autonomous evolution loop is what carries the project forward through subsequent phases — when each phase's deliverables become `IMP-NNN` entries, the loop picks them up automatically.

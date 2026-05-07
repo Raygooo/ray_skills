@@ -1,0 +1,333 @@
+# Autonomous evolution prompt
+
+You are running an autonomous evolution cycle for this project. Your job is
+to read the project's source-of-truth docs, pick exactly one queued
+improvement, implement it cleanly via the [implementation core](./core.md),
+and leave a one-screen review report for the human.
+
+You are operating without a live human. Be conservative. Stop early rather
+than ship something risky. The human reviews everything you produce before
+it merges.
+
+## Hard constraints
+
+The implementation core's hard constraints (read [`core.md`](./core.md)
+first) apply unchanged. **One additional autonomous-only constraint:**
+
+8. **Never proceed if the initialization gate fails** — see Step 0.
+
+If any constraint is at risk, stop and write a status note rather than
+push through.
+
+## Step 0 — Pre-flight: verify the initialization gate
+
+Run this in the project root (`cd "$(git rev-parse --show-toplevel)"`).
+
+```bash
+# Required: clean working tree on default branch
+[ -d .git ] || { echo "FAIL: not a git repo"; exit 1; }
+br=$(git rev-parse --abbrev-ref HEAD)
+[ "$br" = "{{DEFAULT_BRANCH}}" ] || { echo "FAIL: on $br, not {{DEFAULT_BRANCH}}"; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "FAIL: working tree dirty"; exit 1; }
+git tag -l | grep -qE '^{{BASELINE_TAG_PREFIX_PATTERN}}' || { echo "FAIL: no baseline tag found"; exit 1; }
+```
+
+**If the gate fails:** do **not** create a worktree. Instead:
+
+1. Append an entry to [`docs/backlog/feedback.md`](../backlog/feedback.md)
+   (top of file, fresh `FB-NNN`) describing why the run aborted. Quote the
+   failed check.
+2. Exit cleanly. Print the path of the feedback entry. Do nothing else.
+
+The gate is defined formally in [`ADR-{{ADR_NUMBER_GATE}}`](../decisions/{{ADR_NUMBER_GATE}}-initialization-gate.md). If the gate definition has drifted from what this prompt
+checks, prefer the ADR.
+
+## Step 1 — Pick an IMP from the queue
+
+Read these in order:
+
+1. [`ROADMAP.md`](../../ROADMAP.md) — identify the **current phase**
+2. Top of [`CHANGELOG.md`](../../CHANGELOG.md) — recent entries
+3. [`docs/backlog/improvements.md`](../backlog/improvements.md) — the queue
+4. [`docs/backlog/feedback.md`](../backlog/feedback.md) — bottom-up signal
+
+Walk the queue in this priority order:
+
+| Priority | Look for |
+|---|---|
+| 1 | An `IMP-NNN` with status `in-progress` (resume work from a previous run) |
+| 2 | An `IMP-NNN` with status `scheduled-phase-N` where N == current phase |
+| 3 | An `IMP-NNN` with status `accepted` |
+
+Skip any item that:
+
+- Has target phase != current phase
+- Touches a strategic decision (D1–DN)
+- Requires external services or accounts not already configured
+- Is unclear in scope — if you can't write a one-paragraph description of
+  what "done" looks like, skip
+
+**If no eligible item exists:**
+
+1. Read recent CHANGELOG entries, open feedback, and current-phase
+   deliverables.
+2. Generate **one** new `IMP-NNN` proposal — a concrete, scoped piece of
+   work that would advance the project. Use the format already in
+   `improvements.md`.
+3. Append it with status `proposed`, source
+   *"Internal observation (autorun YYYY-MM-DD)"*.
+4. Skip to Step 5 (write report). Do **not** implement the new IMP —
+   implementation requires human acceptance first.
+
+Once you have a chosen item, log its ID. You will reference it throughout.
+
+## Step 2 — Set up an isolated worktree (dual-mode)
+
+The autorun has two invocation modes:
+
+- **Cron / direct CLI** (`scripts/autorun.sh`) — agent starts from the
+  default-branch checkout. Step 2 must create a fresh worktree.
+- **Claude Code `/loop` or `/schedule` (harness-managed)** — agent is
+  already inside a worktree the harness created (e.g.
+  `.claude/worktrees/<adjective>-<surname>-<hash>` on a `claude/...`
+  branch). Step 2 must use the existing worktree, not create a nested one.
+
+```bash
+TS=$(date -u +"%Y%m%dT%H%M%SZ")
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$CURRENT_BRANCH" = "{{DEFAULT_BRANCH}}" ]; then
+  # Mode A: started from default-branch checkout. Create a fresh worktree.
+  REPO=$(basename "$(pwd)")
+  WORKTREE="../${REPO}_autorun_${TS}"
+  BRANCH="autorun/${TS}"
+  git worktree add -b "$BRANCH" "$WORKTREE" {{DEFAULT_BRANCH}}
+  cd "$WORKTREE"
+  echo "[autorun] Created worktree at $WORKTREE on branch $BRANCH"
+else
+  # Mode B: already inside an isolated worktree (harness-managed).
+  WORKTREE="$(git rev-parse --show-toplevel)"
+  BRANCH="$CURRENT_BRANCH"
+  echo "[autorun] Using existing worktree: $WORKTREE on branch $BRANCH"
+
+  # Sanity check the harness gave us a sane environment:
+  [ "$BRANCH" != "{{DEFAULT_BRANCH}}" ] || {
+    echo "[autorun] FAIL: harness placed us on $BRANCH (must not be {{DEFAULT_BRANCH}})"
+    exit 1
+  }
+  [ -z "$(git status --porcelain)" ] || {
+    echo "[autorun] FAIL: working tree is dirty before any work began"
+    exit 1
+  }
+fi
+```
+
+All subsequent steps run in `$WORKTREE` on `$BRANCH`. The mode used (A or
+B) and the branch name should appear in the report's header so the human
+knows which path the run took.
+
+## Step 3 — Open the in-flight status file
+
+Once the worktree is set up, immediately create the in-flight status file
+at `docs/autorun/reports/${TS}.in-progress.md`. The presence of a
+`.in-progress.md` file in `docs/autorun/reports/` is the human's
+at-a-glance signal that a run is currently happening (vs. a finished run,
+which has the `.md` suffix).
+
+```bash
+STATUS_FILE="docs/autorun/reports/${TS}.in-progress.md"
+{
+  echo "# Autorun in progress — ${TS}"
+  echo
+  echo "- **Branch:** \`${BRANCH}\`"
+  echo "- **Worktree path:** \`${WORKTREE}\`"
+  echo "- **Started:** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "- **Picked:** IMP-NNN (or 'proposal-only' if Step 1 generated a new proposal instead)"
+  echo
+  echo "## Step log"
+  echo
+  echo "- $(date -u +%H:%M:%SZ) — step: starting (worktree set up; chosen item: IMP-NNN)"
+} > "$STATUS_FILE"
+```
+
+(Step 1 has already chosen the item — record it in the **Picked** header
+line and the first step entry. If Step 1 generated a new proposal, write
+`proposal-only` and skip to Step 5; you'll still rename to `<TS>.md` in
+Step 5 with the proposal-only report body.)
+
+After every named core step, **append** a one-line entry to `$STATUS_FILE`
+using `>>` — never rewrite the whole file:
+
+```bash
+echo "- $(date -u +%H:%M:%SZ) — step: <step-name> (<short note>)" >> "$STATUS_FILE"
+```
+
+If you abort mid-run (blocker, build failure), append a final
+`step: aborted (<reason>)` line before the rename in Step 5.
+
+## Step 4 — Run the implementation core
+
+Read [`docs/autorun/core.md`](./core.md) and follow Steps A–F. Apply these
+status-file hooks at the named boundaries:
+
+| Core boundary | Status-file line to append |
+|---|---|
+| After Step B (planning rubric written) | `step: rubric-plan` |
+| After Step C (IMP status flipped) | `step: imp-status-in-progress (IMP-NNN)` |
+| Start of Step D (implementation begins) | `step: implementation-start` |
+| Start of Step E (verification begins) | `step: verification-start` |
+| After Step E build pass | `step: build-pass` |
+| Before staging in Step F | `step: ready-to-commit` |
+
+**Persistence of the planning rubric (Step B):** write to
+`docs/autorun/reports/<TS>-rubric-plan.md` so it's part of the worktree's
+commit. (Parent-driven wrappers keep this in memory; the autonomous loop
+persists it because the human reviews after-the-fact.)
+
+If the core aborts (rubric verification failure, build failure, blocker),
+append `step: aborted (<reason>)` and skip to Step 5. Do **not** commit
+half-done work.
+
+## Step 5 — Finalize the report file
+
+The in-progress file has been accumulating step entries throughout the
+run. Now turn it into the final report by **appending** the full report
+sections to the same file and then **renaming** it to drop the
+`.in-progress` suffix:
+
+```bash
+FINAL_REPORT="docs/autorun/reports/${TS}.md"
+
+{
+  echo
+  echo "---"
+  echo
+  echo "<full report body — see template below>"
+} >> "$STATUS_FILE"
+
+git mv "$STATUS_FILE" "$FINAL_REPORT"
+```
+
+The rename is the **terminal-state signal**: a `.in-progress.md` file
+means a run is still going (or wedged); a `.md` file means the run is
+over (success, blocker, or proposal-only — the report's `Status:` line
+says which).
+
+### Failure-path policy for the rename
+
+- **Successful run, blocker, proposal-only:** rename to `.md`. The report
+  explains in its `Status:` and `Blockers / notes` sections.
+- **Aborted at the initialization gate (Step 0):** the in-progress file
+  was never created (gate runs before Step 3). Print the FB-NNN path; no
+  `.in-progress.md` exists to rename.
+- **Wedged session (the agent hung and never reached Step 5):** the file
+  remains `.in-progress.md`. That **is** the signal — a stale
+  `.in-progress.md` from a timestamp older than the longest a healthy run
+  takes (~10 min) is an unambiguous "investigate this." Do not preemptively
+  rename to mask wedge symptoms.
+
+### Report body template
+
+Append this to `$STATUS_FILE` before the rename:
+
+```markdown
+# Autorun report — <TS>
+
+- **Branch:** `<BRANCH>`  (Mode A: `autorun/<TS>` or Mode B: `claude/<adj>-<surname>-<hash>`)
+- **Worktree path:** `<absolute path>`
+- **Status:** `complete` | `aborted-gate-failure` | `aborted-blocker` | `proposed-only`
+
+## Item worked on
+
+- **IMP:** [IMP-NNN — title](../backlog/improvements.md#imp-nnn-...)
+- **Why this one:** [one sentence: priority rule that surfaced it]
+- **Final IMP status:** `done` | `in-progress (blocked)` | `n/a (proposed only)`
+
+## What changed
+
+- `<file>` — <one line>
+- `<file>` — <one line>
+
+## Rubric walk
+
+- Planning: see `docs/autorun/reports/<TS>-rubric-plan.md`
+- Verification: pass | fail (which items)
+- Items addressed: R-N.N, R-N.N, ...
+- Items deferred: R-N.N → IMP-NNN
+- Items wontfix: R-N.N (reason)
+
+## Build status
+
+- `{{TYPE_CHECK_CMD}}`: pass | fail (paste error)
+- `{{LINT_CMD}}`: pass | fail
+- `{{BUILD_CMD}}`: pass | fail
+
+## ADRs added
+
+- [ADR-NNNN](../decisions/NNNN-slug.md) — title (or "none")
+
+## KPs proposed
+
+- [KP-NNN](../learning/knowledge-points.md#kp-nnn-...) — title (or "none — no genuinely transferable concept emerged")
+
+## Blockers / notes
+
+[Anything the human should know before reviewing.]
+
+## Review checklist for human
+
+- [ ] Diff looks scoped to the IMP (no drive-by changes)
+- [ ] CHANGELOG entry is accurate
+- [ ] ADR (if any) is reasonable
+- [ ] KP (if any) is genuinely transferable
+- [ ] Build passes locally on your machine
+- [ ] Decision: merge into `{{DEFAULT_BRANCH}}` / discard worktree / request changes
+
+## How to merge or discard
+
+To merge:
+
+```bash
+cd <project root, NOT the worktree>
+git merge autorun/<TS> --no-ff
+```
+
+To discard:
+
+```bash
+cd <project root>
+git worktree remove ../<repo>_autorun_<TS> --force
+git branch -D autorun/<TS>
+```
+```
+
+Stage and commit the renamed report file with the rest of your changes
+(or as a separate trailing commit). Stage **both** the deletion of
+`${TS}.in-progress.md` and the addition of `${TS}.md`. `git mv` handles
+this in one step; if you renamed manually, use
+`git add -A docs/autorun/reports/`.
+
+## Step 6 — Output
+
+Print **only** the absolute path to the report file, on a single line.
+No other output. The cron / scheduler logs the path; the human reads the
+report when ready.
+
+```
+{{PROJECT_ROOT}}/docs/autorun/reports/20260101T090000Z.md
+```
+
+If you aborted at the gate, print the path to the FB-NNN entry instead.
+
+---
+
+## Quick safety checklist (re-read before each run)
+
+- [ ] I am working in a worktree, not the original checkout
+- [ ] My branch is `autorun/<TS>` (Mode A) or `claude/...` (Mode B), never `{{DEFAULT_BRANCH}}`
+- [ ] I will not run `git push`
+- [ ] I will not edit ROADMAP D1–DN
+- [ ] I will revert and abort if `{{TYPE_CHECK_CMD}}`/`{{LINT_CMD}}`/`{{BUILD_CMD}}` fails after my changes
+- [ ] I will write the report whether the run succeeded or aborted
+- [ ] I will open `docs/autorun/reports/<TS>.in-progress.md` at Step 3 and append at every named core boundary
+- [ ] I will rename it to `<TS>.md` at Step 5 so the human can tell at a glance whether a run is still going

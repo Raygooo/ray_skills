@@ -1,0 +1,44 @@
+# Architecture Decision Records (ADRs)
+
+This folder captures the **why** behind every non-obvious technical decision in this project. Each file documents one decision: the problem we faced, what we chose, what we considered and rejected, and how the choice connects to the long-term plan in [`../../ROADMAP.md`](../../ROADMAP.md).
+
+## When to write an ADR
+
+Write a new ADR whenever a decision is made that:
+
+- Has more than one reasonable answer.
+- Will be costly or confusing to revisit later if the reasoning isn't recorded.
+- Affects how future contributors (including AI sessions) write code.
+
+Routine choices that are obvious from the code itself (variable names, internal helper structure, etc.) don't need ADRs.
+
+## Format
+
+Each ADR follows the template in [`template.md`](./template.md). Required sections:
+
+| Section | What it captures |
+|---|---|
+| **Status** | `accepted` / `superseded by ADR-NNNN` / `deprecated` |
+| **Date** | When the decision was first made |
+| **Context** | The problem we were solving |
+| **Decision** | What we chose |
+| **Alternatives considered** | What we rejected, and why |
+| **Consequences** | Tradeoffs we accepted; constraints this places on future work |
+| **Roadmap alignment** | Which roadmap phase / strategic decision (D1..DN) this serves |
+
+## Lifecycle
+
+ADRs are **immutable once accepted**. If a decision later changes:
+
+1. Create a new ADR documenting the new decision.
+2. Update the old ADR's `Status` to `superseded by ADR-NNNN` (link to the new one).
+3. Don't edit the body of the superseded ADR — the historical reasoning is the point.
+
+## Index
+
+| # | Title | Status |
+|---|---|---|
+
+<!-- Append rows here as ADRs are added:
+| [0001](./0001-slug.md) | Title | accepted |
+-->

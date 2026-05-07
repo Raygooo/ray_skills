@@ -1,0 +1,55 @@
+# Learning Notes
+
+This folder is the project's learning surface. The intent is to capture transferable concepts that emerge from real project work — concepts that would be useful on a different project, in a different language, in a different domain.
+
+This folder counter-balances something real: when working with capable AI assistance, it's possible to ship a lot of code without internalizing the concepts. The KP system exists to make sure the *named ideas* land in the human's head even when the AI is doing more of the writing.
+
+## Files
+
+- [`knowledge-points.md`](./knowledge-points.md) — accumulating log of transferable concepts. Each entry is a `KP-NNN` with: the concept, where it played out in our code, why it matters beyond this project, and links to the ADRs / backlog entries / code that demonstrate it.
+
+## When to write a new knowledge point
+
+Knowledge points are written by the AI collaborator or the human collaborator at meaningful moments:
+
+- After a **major feature** ships and we can name the pattern it embodied
+- After **feedback** reveals a transferable principle (e.g. a specific UX bug → a general principle about user feedback)
+- After a **significant ADR** is accepted whose reasoning is generalizable
+- At **phase transitions** in the roadmap
+- Whenever the AI collaborator notices that something *worth keeping* has just been demonstrated and asks the human if they'd like to record it
+
+Trigger volume target: **a handful per phase**, not per commit. Quality over quantity. The point is to leave a trail of named concepts the human can revisit when reading other people's code, watching talks, or interviewing — not to generate a glossary of every minor pattern.
+
+## Format
+
+Each knowledge point is a level-2 heading with the format:
+
+```markdown
+## KP-NNN: <Title> (<date>)
+
+**Concept.** One-sentence definition.
+
+**What we did.** Concrete reference to project work — file paths, ADR numbers, commit timing.
+
+**Why it matters.** The general principle, divorced from this project. Where this comes up in other LLM-driven work, in other software work, in other domains.
+
+**See also.** Links to ADRs, backlog entries, or code.
+```
+
+Numbering is sequential and stable. KPs are **mutable** — if our understanding of a concept deepens, we can edit the entry. They're not ADRs (which are immutable decisions); they're learning notes that can grow.
+
+## Quality bar
+
+A KP is *not*:
+
+- "We use library X" (that's project-specific)
+- "Run command Y to debug Z" (that's a runbook entry, not a transferable concept)
+- "Be careful of edge case W" (that's a code comment)
+
+A KP *is*:
+
+- "Liveness signals must be tied to real data flowing — animation alone can't prove a connection is alive"
+- "Partial outputs are the rule, not the exception — design for what-if-this-didn't-finish from the start"
+- "The agent loop is a primitive, not a feature — every framework just wraps it"
+
+Test: would this be useful to someone working on a different project in a different stack? If yes, it's a KP. If no, it's a comment, a runbook note, or an ADR.
