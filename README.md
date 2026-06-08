@@ -33,15 +33,16 @@ Creates a macOS `.app` launcher that starts any Electron/desktop app (Claude, Cu
 
 ### marketplace-contributor
 
-Meta-plugin for growing this marketplace itself. Teaches agents how to capture a workflow as a reusable skill, scaffold a new plugin around it, apply progressive disclosure across `SKILL.md` / `references/` / `scripts/` / `assets/`, and register the plugin locally.
+Meta-plugin for growing this marketplace itself. Teaches agents how to capture a workflow as a reusable skill (and, when a step needs isolation, a bundled subagent), scaffold a new plugin, apply progressive disclosure across `SKILL.md` / `references/` / `scripts/` / `assets/`, delegate skill authoring to the built-in `skill-creator`, and publish by pushing straight to `main`.
 
 **Skills included:**
-- `marketplace-contributor:contribute-skill` — auto-triggered when you want to save a workflow as a skill or add a new plugin to this marketplace
+- `marketplace-contributor:contribute-skill` — auto-triggered when you want to save a workflow as a skill/subagent or add a new plugin to this marketplace
 
 **Trigger phrases:**
 - "save this as a skill"
 - "turn this workflow into a skill"
-- "add a skill to the marketplace"
+- "add a skill / subagent to the marketplace"
+- "package this workflow"
 - "create a new plugin for this"
 - "contribute to my marketplace"
 

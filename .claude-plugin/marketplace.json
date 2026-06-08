@@ -12,7 +12,7 @@
     {
       "name": "marketplace-contributor",
       "source": "./plugins/marketplace-contributor",
-      "description": "Meta-plugin for contributing to this marketplace: author new skills, scaffold new plugins, and register them locally"
+      "description": "Meta-plugin for contributing to this marketplace: author skills and subagents, scaffold new plugins, and publish by pushing to main"
     },
     {
       "name": "parallel-orchestrator",
