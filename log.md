@@ -16,3 +16,5 @@ Format (one line per event, parseable prefix):
 ## [2026-06-08] updated | marketplace-contributor:contribute-skill v0.2.0 | added subagents, orchestration, skill-creator delegation, direct-push-to-main publishing
 ## [2026-06-08] distilled | marketplace-contributor:curate-marketplace v0.1.0 | lint/maintenance pass for the marketplace (anti-rot, borrowed from LLM Wiki lint)
 ## [2026-06-08] updated | marketplace-contributor:contribute-skill | added knowledge/ layer + log.md step + distill-reminder hook
+## [2026-06-08] distilled | parallel-orchestrator v0.1.0 | committed previously-untracked plugin files (resolved dangling marketplace.json entry flagged by curate)
+## [2026-06-08] curated | engineering-discipline | trimmed skill description 2996 → 1140 chars (under the ~1536 trigger budget); marketplace lints clean
