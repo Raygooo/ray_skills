@@ -1,206 +1,114 @@
 ---
 name: contribute-skill
 description: |
-  Author a new skill for the local ray-skills marketplace and publish it locally. Use this when the user wants to capture a workflow as a reusable skill, save a procedure so future agents can follow it, add a skill to an existing plugin in this repo, or scaffold a brand-new plugin around a new skill. Also covers progressive disclosure (when to put content in SKILL.md vs. references/ vs. scripts/ vs. assets/) and how to register the plugin in marketplace.json so Claude Code picks it up.
-  Trigger when the user says things like: "save this as a skill", "turn this workflow into a skill", "add a skill to the marketplace", "create a new plugin for this", "contribute to my marketplace", "remember how to do X as a skill", or otherwise asks to formalize a procedure into a loadable skill in this repo.
+  Capture a workflow as a reusable Claude Code skill (and, when needed, a bundled subagent) for the local ray-skills marketplace, then publish it by pushing straight to the GitHub main branch. Use this when the user wants to save a procedure so future agents can follow it, add a skill to an existing plugin in this repo, scaffold a brand-new plugin, or package a repeatable multi-step / multi-agent workflow. Covers progressive disclosure (SKILL.md vs references/ vs scripts/ vs assets/), bundling subagents (agents/), delegating to the built-in skill-creator, and registering the plugin in marketplace.json.
+  Trigger when the user says things like: "save this as a skill", "turn this workflow into a skill", "add a skill / subagent to the marketplace", "create a new plugin for this", "package this workflow", "contribute to my marketplace", or "remember how to do X as a skill".
 ---
 
 # Contribute a Skill to the ray-skills Marketplace
 
-This skill teaches you (the agent) how to capture a workflow as a skill and publish it into this local marketplace so future sessions can load and trigger it automatically.
+Teaches you (the agent) how to capture a workflow as a skill — optionally with a bundled subagent — and publish it into this local marketplace by pushing directly to `main`, so future sessions load and trigger it automatically.
 
 ## Mental model
 
-A **marketplace** is this repo. It is indexed by [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json).
+- **Marketplace** = this repo, indexed by [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json).
+- **Plugin** = a folder under `plugins/<name>/` grouping related capabilities around one theme. Can ship skills, subagents (`agents/`), slash commands, hooks, and MCP servers.
+- **Skill** = `plugins/<plugin>/skills/<skill>/SKILL.md`. Claude reads every installed skill's `description` and loads the body only when it matches — the description is the trigger contract.
+- **Subagent** = `plugins/<plugin>/agents/<name>.md`, a specialized isolated-context role for heavy/reusable steps.
 
-A **plugin** is a folder under `plugins/<plugin-name>/` that groups related skills (and optionally commands, hooks, agents) around a single theme.
+There is **no declarative "workflow" file** — a "workflow" is just a skill (the repeatable procedure) plus, when a step needs isolation/reuse, one or more subagents. See [references/orchestration.md](references/orchestration.md) before promising any multi-agent primitive.
 
-A **skill** is a folder under a plugin's `skills/<skill-name>/` with a `SKILL.md` file. Claude Code reads the frontmatter of every installed skill and decides when to load the body based on the `description` field — so the description is the skill's trigger contract.
-
-Content the user wants to save as a skill can include: **documents, knowledge, scripts, assets, and more**. Put each in the right place per the progressive-disclosure rules below.
+Deep references (load on demand — don't inline them here):
+- [references/skill-authoring.md](references/skill-authoring.md) — full SKILL.md frontmatter, progressive disclosure, delegating to `skill-creator`.
+- [references/plugin-components.md](references/plugin-components.md) — full `plugin.json` schema, all component dirs, agent frontmatter, path variables.
+- [references/orchestration.md](references/orchestration.md) — subagents vs agent teams vs `/batch`; when to bundle an agent.
 
 ## Workflow
 
-### Step 1 — Clarify what the user wants to capture
+### Step 1 — Clarify what to capture
+Confirm with the user: (1) the workflow in one sentence; (2) the trigger phrases that should wake it; (3) whether it needs scripts, reference docs, assets, or a **subagent** for a heavy/isolated step. If vague, propose a concrete shape and let them correct you.
 
-Before writing anything, confirm with the user:
+### Step 2 — Prefer delegating skill authoring to `skill-creator`
+If `anthropic-skills:skill-creator` is available, use it to scaffold and refine the actual `SKILL.md` (it handles structure, description tuning, and evals). Then come back here for the marketplace-specific wiring below. If it's not available, author by hand using [references/skill-authoring.md](references/skill-authoring.md). A skill invokes another skill simply by referencing its slash form (e.g. `/anthropic-skills:skill-creator`) — that's the only "sub-skill" mechanism.
 
-1. What is the workflow / procedure / knowledge being captured? Ask them to describe it in one sentence.
-2. What trigger phrases should wake this skill up? ("When I say X, run this skill.")
-3. Does it involve executable steps (scripts), reference docs (large content that shouldn't always be loaded), or bundled assets (templates, images)?
+### Step 3 — New plugin, or add to an existing one?
+Judge by theme, not file count. Add to an existing plugin if it shares that plugin's core theme; otherwise create a new plugin. Prefer a new, focused plugin when in doubt — narrow descriptions trigger more reliably.
 
-If the user is vague, propose a concrete shape and let them correct you.
-
-### Step 2 — Decide: new plugin, or add to an existing one?
-
-Look at `plugins/` and judge by theme, not by file count.
-
-- **Add to an existing plugin** if the new skill shares the plugin's core theme (e.g. another macOS launcher trick → goes in `proxy-app-launcher`, or arguably a sibling plugin about launchers).
-- **Create a new plugin** if the skill is a distinct concern with its own identity. Prefer this when in doubt — plugins are cheap, and a focused plugin description triggers more reliably than a grab-bag one.
-
-### Step 3 — Directory layout
-
-Create files to match this structure:
-
+### Step 4 — Create the files
+Layout (only the parts you need):
 ```
 plugins/<plugin-name>/
-├── .claude-plugin/
-│   └── plugin.json
-└── skills/
-    └── <skill-name>/
-        ├── SKILL.md          # always loaded when the skill triggers
-        ├── references/       # optional — loaded on demand via Read
-        │   └── *.md
-        ├── scripts/          # optional — executable via Bash
-        │   └── *.{sh,py,js,...}
-        └── assets/           # optional — templates, images, binary inputs
-            └── *
+├── .claude-plugin/plugin.json        # only this file lives in .claude-plugin/
+├── skills/<skill-name>/
+│   ├── SKILL.md                      # always loaded on trigger — keep lean
+│   ├── references/   (optional)      # loaded on demand
+│   ├── scripts/      (optional)      # executed via Bash
+│   └── assets/       (optional)      # templates/binaries
+└── agents/<agent-name>.md  (optional) # bundled subagent
 ```
+Names are lowercase-hyphenated; the plugin's directory name must equal the `name` field in both `plugin.json` and `marketplace.json`. `SKILL.md` is uppercase exactly. Full schemas: [references/plugin-components.md](references/plugin-components.md).
 
-Naming conventions:
+### Step 5 — Write SKILL.md and apply progressive disclosure
+Keep core workflow + decision logic in `SKILL.md`; push long reference material to `references/`, executables to `scripts/`, templates/binaries to `assets/`, and reference them by relative path. Make the `description` specific (capability + concrete trigger phrasings). Details and the full field table: [references/skill-authoring.md](references/skill-authoring.md).
 
-- Plugin name: lowercase, hyphen-separated, descriptive of the theme (e.g. `proxy-app-launcher`, `marketplace-contributor`).
-- Skill name: lowercase, hyphen-separated, reads as a verb phrase or noun describing the capability (e.g. `contribute-skill`, `proxy-app-launcher`).
-- `SKILL.md` must be uppercase exactly like that — the loader looks for this filename.
+### Step 6 — (If the workflow needs it) Bundle a subagent
+If a step needs an isolated context, a different model/toolset, or is a reusable named role, add `agents/<name>.md` (see [references/orchestration.md](references/orchestration.md) for the decision and [references/plugin-components.md](references/plugin-components.md) for the frontmatter). Plugin agents may not declare `hooks`, `mcpServers`, or `permissionMode`.
 
-### Step 4 — Write SKILL.md
-
-The frontmatter and body together form the skill. Template:
-
-```markdown
----
-name: <skill-name>
-description: |
-  <One paragraph explaining what the skill does and when to use it. This is the trigger contract — be specific about user intents, example phrasings, and scenarios. Claude only loads the body when this description matches.>
-  Trigger when the user says things like: "...", "...", or otherwise asks to ...
----
-
-# <Human-Readable Title>
-
-<One or two sentences: what problem this skill solves and why it exists.>
-
-## Workflow
-
-### Step 1 — ...
-### Step 2 — ...
-...
-
-## Troubleshooting (optional)
-
-| Issue | Cause | Fix |
-|---|---|---|
-| ... | ... | ... |
-```
-
-Rules for a good `description`:
-
-- Lead with what the skill does. Follow with concrete trigger phrases/intents.
-- Include the problem domain, not just the mechanism. ("Fix Electron apps ignoring system proxy" > "Make .app bundles").
-- If there are near-miss skills the agent might confuse this with, disambiguate inside the description.
-- Keep it focused — a description that promises too much triggers on false positives.
-
-### Step 5 — Apply progressive disclosure
-
-Decide where each piece of content lives. `SKILL.md` is **always** loaded when the skill triggers — keep it lean.
-
-| Content kind | Where it goes | Why |
-|---|---|---|
-| Core workflow, decision logic, short examples | `SKILL.md` | Always needed when the skill fires |
-| Long-form reference docs, API schemas, deep explanations | `references/<topic>.md` | Read on demand only when the workflow hits that branch |
-| Reusable executable helpers (Python, shell, Node) | `scripts/<name>.{py,sh,js}` | Invoked via Bash; don't inline large scripts into SKILL.md |
-| Templates, images, `.icns` files, skeleton configs | `assets/<name>.<ext>` | Copied or used as input; not read as instructions |
-
-Inside `SKILL.md`, reference these files by relative path so the agent knows to load them, e.g. *"see `references/plist-schema.md` for the full Info.plist reference"* or *"run `scripts/generate_icon.py`"*.
-
-Rule of thumb: if content is only relevant to one branch of the workflow, move it out of SKILL.md.
-
-### Step 6 — (If new plugin) Write plugin.json
-
-Create `plugins/<plugin-name>/.claude-plugin/plugin.json`:
-
+### Step 7 — (If new plugin) Write plugin.json
 ```json
 {
   "name": "<plugin-name>",
-  "description": "<one-line plugin description — shown in /plugin listings>",
+  "description": "<one-line description>",
   "version": "0.1.0",
-  "author": {
-    "name": "raygooo",
-    "email": "lovzoe@hotmail.com"
-  },
+  "author": { "name": "raygooo", "email": "lovzoe@hotmail.com" },
   "repository": "https://github.com/Raygooo/ray_skills",
   "license": "MIT",
-  "keywords": ["...", "..."]
+  "keywords": ["..."]
 }
 ```
 
-The `name` field must match the directory name.
-
-### Step 7 — (If new plugin) Register in marketplace.json
-
-Edit `.claude-plugin/marketplace.json` at the repo root and append to the `plugins` array:
-
+### Step 8 — (If new plugin) Register + document
+Append to the `plugins` array in [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json) (don't reorder existing entries):
 ```json
-{
-  "name": "<plugin-name>",
-  "source": "./plugins/<plugin-name>",
-  "description": "<same one-line description as plugin.json>"
-}
+{ "name": "<plugin-name>", "source": "./plugins/<plugin-name>", "description": "<same one-liner>" }
+```
+Then add a `###` section under `## Plugins` in [README.md](README.md): name, problem it solves, `**Skills included:**` (`plugin:skill` ids), `**Trigger phrases:**`.
+
+### Step 9 — Verify before publishing
+- [ ] `plugin.json` exists; `name` matches the folder.
+- [ ] `SKILL.md` has valid YAML frontmatter with `name` + a concrete `description`.
+- [ ] `marketplace.json` still parses (no trailing commas) and README has the new section.
+- [ ] Every referenced `references/`/`scripts/`/`assets/` file and any `agents/*.md` actually exists.
+- [ ] (If JSON touched) `python3 -c "import json,sys; json.load(open(sys.argv[1]))" <file>` passes.
+
+### Step 10 — Publish: push straight to `main`
+This marketplace publishes by **committing and pushing directly to the `main` branch — no pull request**. The repo's default branch is `main` (verify with `git remote show origin | grep 'HEAD branch'`).
+
+```bash
+git add -A
+git commit -m "<what changed and why>
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+# If currently on a feature/worktree branch, land it on main and push:
+git push origin HEAD:main
+# If already on main: git push origin main
 ```
 
-Do not re-order or modify other entries.
-
-### Step 8 — (If new plugin) Update the top-level README.md
-
-Add a new `###` subsection under `## Plugins` following the style of existing entries:
-
-- Plugin name as heading
-- One-paragraph description of the problem it solves
-- `**Skills included:**` list with `plugin:skill` identifiers
-- `**Trigger phrases:**` list — short quoted examples pulled from the skill description
-
-This README is the human-facing index; keep it in sync.
-
-### Step 9 — Publish locally
-
-"Local publishing" in this marketplace is purely a file operation — no git push, no remote registry. After the files are in place:
-
-1. If this marketplace is not yet registered in the user's Claude Code, tell the user to run:
-   ```
-   /plugin marketplace add <absolute-path-to-this-repo>
-   ```
-   (or the GitHub short form if they already use the remote version)
-2. To install a newly added plugin:
-   ```
-   /plugin install <plugin-name>@ray-skills
-   ```
-3. To pick up changes to an already-installed plugin, the user may need to restart Claude Code or re-install the plugin. Tell them which.
-
-Do **not** run `git push`, open PRs, or publish to any remote registry as part of this skill — the user will do that separately if/when they choose.
-
-### Step 10 — Verify
-
-Before declaring done, confirm:
-
-- [ ] `plugins/<plugin-name>/.claude-plugin/plugin.json` exists and `name` matches the folder.
-- [ ] `plugins/<plugin-name>/skills/<skill-name>/SKILL.md` exists with valid YAML frontmatter (`name` and `description` present).
-- [ ] If a new plugin: the entry in `.claude-plugin/marketplace.json` parses as valid JSON (no trailing commas).
-- [ ] If a new plugin: README.md has a new `###` section.
-- [ ] All referenced `references/`, `scripts/`, `assets/` files actually exist.
-- [ ] The skill's `description` contains concrete trigger phrases — not just a summary.
-
-Report the created/modified paths back to the user as markdown links.
+If the local `main` is checked out elsewhere and you committed on another branch, fast-forward main first (`git fetch . <branch>:main` or merge) then `git push origin main`. After pushing, tell the user how to pick up the change:
+```
+/plugin marketplace update ray-skills
+/plugin install <plugin-name>@ray-skills      # for a newly added plugin
+```
+Already-installed plugins may need `/plugin marketplace update` + a restart to reload. Report the pushed commit and all created/modified paths as markdown links.
 
 ## Common mistakes to avoid
+- **Weak descriptions** — must contain the user's own words and named tools, not a vague summary.
+- **Everything in SKILL.md** — split anything > ~300 lines into `references/`.
+- **Name drift** — directory name, `plugin.json` name, and `marketplace.json` name must match exactly.
+- **Misplacing files** — only `plugin.json` goes in `.claude-plugin/`; `skills/`, `agents/`, `hooks/` live at plugin root.
+- **Inventing a "workflow" primitive** — there isn't one; ship a skill (+ subagent). See [references/orchestration.md](references/orchestration.md).
+- **Forgetting to push** — publishing here means the change is on `main`; a local-only commit is not published.
 
-- **Weak descriptions.** A description like "helps with proxies" will never trigger reliably. Include the user's own words, the symptoms they describe, and the named tools/objects involved.
-- **Everything in SKILL.md.** If SKILL.md crosses ~300 lines, split long reference material into `references/`.
-- **Forgetting marketplace.json.** A plugin folder that is not registered will not be discoverable by users browsing the marketplace.
-- **Name drift.** The directory name, the `name` field in `plugin.json`, and the `name` field in `marketplace.json` must all match exactly.
-- **Non-local publishing.** This skill's scope ends at local file changes. Do not commit, push, or publish externally unless the user explicitly asks.
-
-## Example shape
-
-See this repo's own plugins for worked examples:
-
-- [plugins/proxy-app-launcher](plugins/proxy-app-launcher) — a single-skill plugin with a bundled Python script under `scripts/`.
-- [plugins/marketplace-contributor](plugins/marketplace-contributor) — this plugin; a skill-only plugin with no bundled assets yet.
+## Worked examples
+- [plugins/proxy-app-launcher](../../../proxy-app-launcher) — single-skill plugin with a bundled `scripts/` helper.
+- [plugins/marketplace-contributor](../..) — this plugin; lean `SKILL.md` + a `references/` directory demonstrating progressive disclosure.
