@@ -1,0 +1,12 @@
+{
+  "name": "parallel-orchestrator",
+  "description": "Split a project into file-disjoint slices with clear contracts, then dispatch parallel sub-agents (each in its own git worktree) to work on them concurrently without colliding. Avoids copy-pasting prompts — uses the Agent tool so workers run as real sub-agents that return structured summaries to a primary orchestrator.",
+  "version": "0.1.0",
+  "author": {
+    "name": "raygooo",
+    "email": "lovzoe@hotmail.com"
+  },
+  "repository": "https://github.com/Raygooo/ray_skills",
+  "license": "MIT",
+  "keywords": ["orchestration", "sub-agents", "worktrees", "parallel", "architecture"]
+}

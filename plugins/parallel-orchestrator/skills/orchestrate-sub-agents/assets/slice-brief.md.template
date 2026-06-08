@@ -1,0 +1,78 @@
+# Slice <NN> — <slice name>
+
+Owner of: <one-line description of what this slice is responsible for>.
+
+## Files you own
+
+<!--
+  Disjoint from every other slice's "Files you own". Include full relative
+  paths. Be specific; don't say "src/" — list modules. Can include new
+  directories the slice will create.
+-->
+
+- `src/<module-a>.py`
+- `src/<module-b>.py`
+- `tests/test_<slice-a>_*.py`
+- new: `scripts/<helper>.sh`
+
+## Files you read but do NOT modify
+
+<!--
+  What other slices' work you consume. Listing them here clarifies the
+  read-boundary and prevents accidental edits.
+-->
+
+- `src/<shared-module>.py` — used for `<specific function calls>`
+- other slices' outputs
+
+## Contracts you MUST honor
+
+<!--
+  The interfaces other slices depend on. Function signatures, SQL schemas,
+  CLI flags, HTTP routes. If you need to break one of these, open a
+  "contract changes requested" note in TASK_TRACKER.md and STOP.
+-->
+
+1. **`function_name(arg1, arg2, *, kwarg=default)`** returns `ReturnType`. Callers: <list>.
+2. **`table_name`** schema: columns `(...)`. Readers: <list>.
+3. **CLI command** `subcommand --flag` — used by `<callers>`.
+
+## Current state
+
+<!-- What works today. One paragraph. -->
+
+Working. <brief status>.
+
+Known issues:
+- <issue>
+- <issue>
+
+## Task list
+
+### Must-do
+- [ ] <task with enough specificity that an agent can ship it without asking>
+- [ ] <task>
+
+### Nice-to-have
+- [ ] <task>
+- [ ] <task>
+
+## Smoke test
+
+<!--
+  One command that validates the slice works end-to-end. Keep it fast (< 30s).
+  Include it here and the agent can copy-paste to self-verify before handoff.
+-->
+
+```bash
+python -m pytest tests/ -q
+<slice-specific command>
+```
+
+## Design guidelines
+
+<!-- 3-5 bullets of invariants specific to this slice. Keep short. -->
+
+- <guideline>
+- <guideline>
+- <guideline>

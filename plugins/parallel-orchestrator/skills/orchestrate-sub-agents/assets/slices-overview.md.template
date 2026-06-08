@@ -1,0 +1,45 @@
+# Slice overview
+
+This project is split into <N> slices. Each slice is a layer of the system with well-defined file ownership, contracts, and a task list. A single agent works on a single slice at a time.
+
+If you're the primary session, you dispatch work by briefing a worker agent with:
+1. The slice file (e.g. `docs/SLICES/01-<name>.md`)
+2. `docs/AGENT_HANDBOOK.md` (the rules)
+3. `docs/TASK_TRACKER.md` (the progress map)
+
+## The slices
+
+| # | Slice | Entry point(s) | Purpose |
+|---|---|---|---|
+| 01 | **<name>** | `<primary files>` | <one-line purpose> |
+| 02 | **<name>** | `<primary files>` | <one-line purpose> |
+| <!-- ... --> |
+
+## Shared-but-rarely-edited modules (contract core)
+
+These files carry cross-slice contracts. Don't modify without coordinator approval:
+
+- `src/<shared-a>.py` — <what it carries>
+- `src/<shared-b>.py` — <what it carries>
+
+If your slice needs to change one of these, leave a "schema changes requested" or "contract changes requested" note in `TASK_TRACKER.md` and wait.
+
+## How slices interact
+
+<!--
+  Simple ASCII diagram of the dependency/data flow. Helps new agents
+  understand where their slice sits.
+-->
+
+```
+Slice A → Slice B → Slice C
+            ↓
+         Slice D
+```
+
+## Where to find what
+
+- `src/` — implementation
+- `docs/` — docs + this overview + per-slice briefs
+- `tests/` — the test suite (keep it passing)
+- `<other>/` — <other>

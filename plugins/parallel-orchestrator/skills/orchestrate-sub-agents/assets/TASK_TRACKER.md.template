@@ -1,0 +1,83 @@
+# Task tracker
+
+**Single source of truth for progress across all slices.** Every worker agent updates this file. Primary session rebalances tasks from here.
+
+Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
+
+Format for in-progress / done / blocked entries:
+`- [~|x|!] YYYY-MM-DDTHH:MM <agent-id> — what you're doing / did / why blocked`
+
+---
+
+## Active work
+
+_Nothing actively in flight._
+
+---
+
+<!--
+  One section per slice. Start by listing the must-do and nice-to-have tasks
+  from each slice brief. Workers flip their task's `[ ]` to `[~]` when they
+  claim it, then `[x]` when they ship. Preserve the history inline.
+-->
+
+## Slice 01 — <name>
+
+### Must-do
+- [ ] <task>
+- [ ] <task>
+
+### Nice-to-have
+- [ ] <task>
+
+---
+
+## Slice 02 — <name>
+
+### Must-do
+- [ ] <task>
+
+### Nice-to-have
+- [ ] <task>
+
+---
+
+<!-- add more slices as needed -->
+
+---
+
+## Cross-slice / shared concerns
+
+### Schema changes requested
+_(Leave a note here if you need a `storage.py` / DB schema change. Primary session will apply it.)_
+
+- None pending.
+
+### Contract changes requested
+_(Function signatures, CLI commands, HTTP routes, etc. you need to break.)_
+
+- None pending.
+
+### Environment issues
+_(If your slice's smoke test fails on a fresh env, note the cause here.)_
+
+- None.
+
+### Design disagreements
+_(If you think a decision is wrong, write it here rather than going rogue.)_
+
+- None.
+
+### Spotted but not fixed
+_(Things you noticed outside your slice — for primary to triage.)_
+
+- None.
+
+---
+
+## How primary session picks the next task
+
+1. Look at the active-work section. If something's `[~]` for a long time with no activity, ping that agent.
+2. Prefer tasks that **unlock** other slices.
+3. Honor the user's explicit priority if they have one.
+4. Spawn a fresh agent with the slice brief + this tracker.

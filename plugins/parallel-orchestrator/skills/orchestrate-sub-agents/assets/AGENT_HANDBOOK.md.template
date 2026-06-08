@@ -1,0 +1,114 @@
+# Agent handbook
+
+You're a **worker agent** on `<PROJECT-NAME>`. This file is your operating manual.
+
+The project has been split into **slices** — isolated layers of the system. You've been assigned one slice. You do not touch files outside your slice unless your slice brief says so. You do not change shared contracts unilaterally.
+
+---
+
+## Before you start — MUST read
+
+Read these, in order, then do not re-read unless they change:
+
+1. `docs/HANDOFF.md` — product goal and current state (if present)
+2. `docs/SLICES/00-overview.md` — how slices relate
+3. Your specific brief at `docs/SLICES/<your-slice>.md`
+4. `docs/TASK_TRACKER.md` — who's working on what right now
+
+---
+
+## Rules of engagement
+
+1. **Stay inside your slice.** Your brief lists the files/directories you own. Don't modify others.
+2. **Don't break contracts.** Shared interfaces (function signatures of functions called by other slices, SQL schema of tables other slices read, CLI commands other slices invoke) are listed in your brief under "Contracts I must honor". If you need to change one, open a note in TASK_TRACKER.md and stop — primary session handles it.
+3. **Update TASK_TRACKER.md before and after every significant change.**
+   - Before: mark task "in progress" with your session id
+   - After: mark task "done" and note what you actually did
+4. **Tests are part of done.** If your slice has tests or a runnable demo, keep them passing. If you add a feature, add at least a smoke test.
+5. **Single source of truth wins.** If two documents disagree, flag it in TASK_TRACKER.md. Don't silently pick one.
+6. **Commit cadence.** When a task is done, leave the repo in a committable state (tests pass).
+7. **Avoid scope creep.** If you see a problem outside your slice, note it in TASK_TRACKER.md under "spotted but not fixed"; don't silently fix it.
+
+---
+
+## How to mark progress
+
+Every agent touches **one file**: `docs/TASK_TRACKER.md`. It's structured as a checklist grouped by slice. You update your own slice's entries.
+
+Task status conventions:
+- `[ ]` = not started
+- `[~]` = in progress (always note your agent id + timestamp)
+- `[x]` = done (always note what shipped + where)
+- `[!]` = blocked (always note why)
+
+Format:
+```
+- [~] YYYY-MM-DDTHH:MM <agent-id> — <what you're doing>
+- [x] YYYY-MM-DDTHH:MM <agent-id> — <what shipped; paths; test status>
+- [!] YYYY-MM-DDTHH:MM <agent-id> — <why blocked; what you need>
+```
+
+When you start, mark `[~]`. When you finish, mark `[x]`. Don't leave tasks in `[~]` across sessions.
+
+---
+
+## Worktrees — every agent works in isolation
+
+You are running inside a git worktree. Work there. Don't `git switch` away. Commit early and often. When finished, your structured summary tells primary the branch name so they can merge.
+
+### Branch naming
+
+`slice-<NN>-<short-verb-object>` — e.g. `slice-01-session-grouping`, `slice-08-model-compare`.
+
+### Commit etiquette
+
+- One commit per logical change. Don't squash into a mega-commit unless asked.
+- Commit messages: first line ≤ 70 chars, imperative voice.
+- **Never `git push --force` on `main`.**
+- **Never skip hooks (`--no-verify`) unless the brief explicitly says so.**
+
+### Commit checklist before handing back
+
+```
+pytest tests/ -q      # or your project's test command
+git status            # no untracked garbage
+git diff --stat main  # you can explain every hunk
+```
+
+---
+
+## Output format (what to return to primary session)
+
+When you complete (or pause) your work, your final message should be a short structured summary. Under ~400 words:
+
+```
+Slice: <slice id>
+Status: done | partial | blocked
+Branch: <branch-name>
+Tasks completed: <checklist references>
+Changes shipped: <file paths touched>
+Tests added/updated: <paths>
+Contracts touched: <any breaks or deprecations>
+Spotted but not fixed: <issues for others>
+Follow-ups: <suggested next tasks>
+```
+
+Primary session writes this into `TASK_TRACKER.md` and decides what to dispatch next.
+
+---
+
+## What primary session does (for context, not for you to do)
+
+- Maintains `TASK_TRACKER.md`
+- Decides when to spawn a new slice agent
+- Resolves cross-slice conflicts
+- Merges schema changes
+- Keeps HANDBOOK / ARCHITECTURE / ROADMAP accurate
+
+If you think primary is wrong about a decision, write the objection in `TASK_TRACKER.md` under "design disagreements" — don't go rogue.
+
+---
+
+## One more rule
+
+Don't silently delete things. If a file or feature seems outdated, flag it; don't remove. A small amount of dead code is cheaper than breaking a contract an agent (or human) didn't realize existed.
