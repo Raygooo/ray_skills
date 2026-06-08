@@ -18,6 +18,8 @@ Everything a Claude Code plugin can ship, with exact paths and field names. Load
 │   └── <agent-name>.md
 ├── hooks/
 │   └── hooks.json           # event-driven automation
+├── knowledge/               # durable domain facts / concept pages (not a Claude Code
+│   └── <topic>.md           #   primitive — just markdown that skills link to on demand)
 ├── .mcp.json                # bundled MCP servers
 ├── .lsp.json                # bundled LSP servers
 ├── settings.json            # default settings applied when the plugin is enabled

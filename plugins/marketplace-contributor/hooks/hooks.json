@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/distill-reminder.sh",
+            "timeout": 10,
+            "statusMessage": "Checking if this workflow is worth distilling…"
+          }
+        ]
+      }
+    ]
+  }
+}

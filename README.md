@@ -33,18 +33,20 @@ Creates a macOS `.app` launcher that starts any Electron/desktop app (Claude, Cu
 
 ### marketplace-contributor
 
-Meta-plugin for growing this marketplace itself. Teaches agents how to capture a workflow as a reusable skill (and, when a step needs isolation, a bundled subagent), scaffold a new plugin, apply progressive disclosure across `SKILL.md` / `references/` / `scripts/` / `assets/`, delegate skill authoring to the built-in `skill-creator`, and publish by pushing straight to `main`.
+Meta-plugin for growing this marketplace itself — a self-evolutionary loop inspired by Karpathy's LLM Wiki pattern. It *creates* (capture a workflow as a skill, subagent, or `knowledge/` page; scaffold a plugin; progressive disclosure; delegate to the built-in `skill-creator`), *maintains* (lint the marketplace for rot), *records* (append-only [log.md](log.md)), and *reminds* (a Stop hook nudges you to distill substantial workflows). Publishes by pushing straight to `main`.
 
 **Skills included:**
-- `marketplace-contributor:contribute-skill` — auto-triggered when you want to save a workflow as a skill/subagent or add a new plugin to this marketplace
+- `marketplace-contributor:contribute-skill` — capture a workflow as a skill/subagent/knowledge page and publish it
+- `marketplace-contributor:curate-marketplace` — lint/maintenance pass (weak descriptions, broken links, name drift, dangling/unregistered plugins, orphan docs); ships a stdlib-only `scripts/lint.py`
+
+**Bundled hook:**
+- `Stop` → `hooks/distill-reminder.sh` — once-per-session, non-blocking nudge to distill a multi-step workflow into a skill (fires only after substantial work)
 
 **Trigger phrases:**
-- "save this as a skill"
-- "turn this workflow into a skill"
-- "add a skill / subagent to the marketplace"
-- "package this workflow"
-- "create a new plugin for this"
-- "contribute to my marketplace"
+- "save this as a skill" / "turn this workflow into a skill" / "package this workflow"
+- "add a skill / subagent / knowledge page to the marketplace"
+- "create a new plugin for this" / "contribute to my marketplace"
+- "lint / curate / audit the marketplace" / "is anything broken or stale"
 
 ### parallel-orchestrator
 

@@ -1,12 +1,12 @@
 {
   "name": "marketplace-contributor",
-  "description": "Meta-plugin for contributing to this marketplace: author skills and subagents, scaffold new plugins, and publish by pushing to main.",
-  "version": "0.2.0",
+  "description": "Meta-plugin for growing this marketplace: author skills/subagents/knowledge, curate (lint) what exists, log the evolution, and publish by pushing to main.",
+  "version": "0.3.0",
   "author": {
     "name": "raygooo",
     "email": "lovzoe@hotmail.com"
   },
   "repository": "https://github.com/Raygooo/ray_skills",
   "license": "MIT",
-  "keywords": ["meta", "skill-authoring", "plugin-authoring", "subagents", "marketplace"]
+  "keywords": ["meta", "skill-authoring", "plugin-authoring", "subagents", "knowledge", "lint", "marketplace"]
 }

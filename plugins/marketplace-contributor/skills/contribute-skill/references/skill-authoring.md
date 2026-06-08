@@ -64,6 +64,9 @@ description: |
 | Long reference docs, schemas, field tables | `references/<topic>.md` | on demand (agent `Read`s it) |
 | Executable helpers (Python/shell/Node) | `scripts/<name>.{py,sh,js}` | executed via Bash, never read as prose |
 | Templates, images, skeleton configs, binaries | `assets/<name>.<ext>` | used as input, not instructions |
+| Durable domain facts / concept pages (*what & why*), reused across skills | plugin-level `knowledge/<topic>.md` | on demand; a skill must link to it (not auto-loaded) |
+
+The `knowledge/` layer is the procedural skill's counterpart: a skill says *how* to do something; a knowledge page records *what* a thing is and *why* — domain facts that outlive any single procedure (the entity-page idea from Karpathy's LLM Wiki). Keep it decoupled from any one skill and link to it from the skills that need it.
 
 Rule of thumb: if content only matters on one branch of the workflow, move it out of `SKILL.md` and link to it by relative path so the agent knows when to pull it in. (This very skill is built that way — a lean `SKILL.md` plus this `references/` directory.)
 
